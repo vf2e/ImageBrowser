@@ -93,4 +93,4 @@ v1.0.0 (2024-03-03)
 
 项目主页：https://github.com/vf2e/ImageBrowser
 
-问题反馈：Issues
+问题反馈：[Issues](https://github.com/vf2e/ImageBrowser/issues)
