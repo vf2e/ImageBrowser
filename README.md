@@ -3,6 +3,10 @@
 ## 1. 项目简介
 
 ImageBrowser 是一款基于 Qt 5.15 框架开发的沉浸式图片浏览器。本项目采用 C++ 与 QML 结合的架构，专注于提供极简且高效的视觉体验。通过异步加载机制与着色器特效，在保证大尺寸图像流畅预览的同时，提供了具有现代感的 UI 交互。
+<div align="center">
+  <h3>✨ 沉浸式浏览体验</h3>
+  <img src="https://github.com/vf2e/ImageBrowser/blob/main/preview.png" alt="主界面预览" width="800"/>
+</div>
 
 ## 2. 核心特性
 
