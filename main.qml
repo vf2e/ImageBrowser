@@ -52,17 +52,17 @@ ApplicationWindow {
         focus: true
 
         Keys.onPressed: (event) => {
-            switch(event.key) {
-                case Qt.Key_Left:  backend.previousImage(); break;
-                case Qt.Key_Right: backend.nextImage(); break;
-                case Qt.Key_Up:
-                case Qt.Key_Down:
-                case Qt.Key_Space: backend.toggleFavoriteForCurrent(); break;
-                default: return;
-            }
-            uiState.activateControls();
-            event.accepted = true;
-        }
+                            switch(event.key) {
+                                case Qt.Key_Left:  backend.previousImage(); break;
+                                case Qt.Key_Right: backend.nextImage(); break;
+                                case Qt.Key_Up:
+                                case Qt.Key_Down:
+                                case Qt.Key_Space: backend.toggleFavoriteForCurrent(); break;
+                                default: return;
+                            }
+                            uiState.activateControls();
+                            event.accepted = true;
+                        }
 
         onActiveFocusChanged: { if(!activeFocus) forceActiveFocus() }
 
@@ -141,18 +141,18 @@ ApplicationWindow {
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     hoverEnabled: true
                     onPositionChanged: (mouse) => {
-                        if (mouse.y < uiState.edgeThreshold || mouse.y > (height - uiState.edgeThreshold)) {
-                            uiState.activateControls()
-                        }
-                    }
+                                           if (mouse.y < uiState.edgeThreshold || mouse.y > (height - uiState.edgeThreshold)) {
+                                               uiState.activateControls()
+                                           }
+                                       }
                     onWheel: (wheel) => {
-                        if (wheel.angleDelta.y > 0) backend.previousImage();
-                        else backend.nextImage();
-                    }
+                                 if (wheel.angleDelta.y > 0) backend.previousImage();
+                                 else backend.nextImage();
+                             }
                     onClicked: (mouse) => {
-                        mainContainer.forceActiveFocus();
-                        if (mouse.button === Qt.RightButton) backend.toggleFavoriteForCurrent();
-                    }
+                                   mainContainer.forceActiveFocus();
+                                   if (mouse.button === Qt.RightButton) backend.toggleFavoriteForCurrent();
+                               }
                 }
             }
         }
@@ -205,7 +205,11 @@ ApplicationWindow {
                         onEntered: placeholderText.color = "#FFFFFF"
                         onExited: placeholderText.color = "#AAAAAA"
                         onClicked: {
-                            backend.selectFolder();
+                            if (backend.recentFolders.length > 0) {
+                                recentFolderMenu.open();
+                            } else {
+                                backend.selectFolder(); // 如果没有历史记录，直接打开系统弹窗
+                            }
                             mainContainer.forceActiveFocus();
                         }
                     }
@@ -301,7 +305,8 @@ ApplicationWindow {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        backend.selectFolder();
+                        // backend.selectFolder();
+                        recentFolderMenu.open();
                         mainContainer.forceActiveFocus()
                     }
                 }
@@ -563,6 +568,155 @@ ApplicationWindow {
                             family: "Microsoft YaHei, Segoe UI"
                         }
                         color: "#888888"
+                    }
+                }
+            }
+        }
+    }
+
+    // --- 最近打开文件夹悬浮菜单 ---
+    Popup {
+        id: recentFolderMenu
+        anchors.centerIn: parent
+        width: 480
+        height: contentColumn.height + 40
+        modal: true // 模态框，点击背景自动关闭
+        focus: true
+
+        // 入场/出场动画
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 250; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.95; to: 1.0; duration: 350; easing.type: Easing.OutBack }
+        }
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 200 }
+            NumberAnimation { property: "scale"; from: 1.0; to: 0.95; duration: 200 }
+        }
+
+        // 弹窗背景设计
+        background: Rectangle {
+            color: "#E61A1A1F" // 高级半透明暗灰
+            radius: 20
+            border.width: 1.5
+            border.color: "#2A2A35"
+
+            layer.enabled: true
+            layer.effect: DropShadow {
+                transparentBorder: true
+                radius: 30
+                samples: 25
+                verticalOffset: 10
+                color: "#99000000"
+            }
+        }
+
+        // 核心内容区
+        Column {
+            id: contentColumn
+            anchors.centerIn: parent
+            width: parent.width - 40
+            spacing: 12
+
+            Text {
+                text: qsTr("最近打开")
+                color: "#FFFFFF"
+                font { pixelSize: 16; weight: Font.Bold; family: "Microsoft YaHei" }
+                leftPadding: 8
+                bottomPadding: 8
+            }
+
+            // 最近文件夹列表
+            Repeater {
+                model: backend.recentFolders
+                delegate: Rectangle {
+                    width: contentColumn.width
+                    height: 50
+                    radius: 12
+                    color: itemMouse.containsMouse ? "#33333A" : "transparent"
+
+                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 12
+
+                        Text {
+                            text: "📂"
+                            font.pixelSize: 16
+                            opacity: itemMouse.containsMouse ? 1.0 : 0.6
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: modelData // 绑定绝对路径
+                            color: itemMouse.containsMouse ? "#FFFFFF" : "#CCCCCC"
+                            elide: Text.ElideLeft // 路径太长时，保留右侧（通常右侧包含当前文件夹名）
+                            font { pixelSize: 13; family: "Consolas, Microsoft YaHei" }
+                        }
+                    }
+
+                    MouseArea {
+                        id: itemMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            backend.loadFolder(modelData);
+                            recentFolderMenu.close();
+                        }
+                    }
+                }
+            }
+
+            // 当没有历史记录时显示提示
+            Text {
+                visible: backend.recentFolders.length === 0
+                text: qsTr("暂无历史记录")
+                color: "#666666"
+                font.pixelSize: 13
+                leftPadding: 8
+                bottomPadding: 8
+            }
+
+            // 分割线
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: "#2A2A35"
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            // 浏览本地文件夹按钮
+            Rectangle {
+                width: contentColumn.width
+                height: 50
+                radius: 12
+                color: browseMouse.containsMouse ? "#1A3B82F6" : "transparent"
+                border.width: 1
+                border.color: browseMouse.containsMouse ? "#3B82F6" : "transparent"
+
+                Behavior on color { ColorAnimation { duration: 150 } }
+
+                RowLayout {
+                    anchors.centerIn: parent
+                    spacing: 8
+                    Text { text: "🔍"; font.pixelSize: 16; opacity: 0.8 }
+                    Text {
+                        text: qsTr("浏览本地文件夹...")
+                        color: browseMouse.containsMouse ? "#60A5FA" : "#AAAAAA"
+                        font { pixelSize: 14; weight: Font.Medium }
+                    }
+                }
+
+                MouseArea {
+                    id: browseMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        recentFolderMenu.close();
+                        backend.selectFolder();
                     }
                 }
             }
