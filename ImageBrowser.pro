@@ -4,7 +4,7 @@ CONFIG += c++11
 
 msvc: QMAKE_CXXFLAGS += /utf-8
 
-RC_ICONS = logo.ico
+RC_ICONS = assets/icons/logo.ico
 
 DEFINES += QT_DEPRECATED_WARNINGS
 
