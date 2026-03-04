@@ -11,6 +11,13 @@ static const QStringList IMAGE_SUFFIXES = {"*.jpg", "*.jpeg", "*.png", "*.bmp", 
 
 ImageBrowserBackend::ImageBrowserBackend(QObject *parent) : QObject(parent)
 {
+    loadRecentFoldersFromSettings();
+}
+
+void ImageBrowserBackend::loadFolder(const QString &folderPath)
+{
+    m_currentFolder = folderPath;
+    loadImagesFromFolder(folderPath);
 }
 
 // --- 文件夹与图片加载逻辑 ---
@@ -26,10 +33,40 @@ void ImageBrowserBackend::selectFolder()
     loadImagesFromFolder(folder);
 }
 
+// 读取持久化记录
+void ImageBrowserBackend::loadRecentFoldersFromSettings()
+{
+    QSettings settings("WangChang", "ImageBrowser");
+    m_recentFolders = settings.value("RecentFolders").toStringList();
+}
+
+// 保存持久化记录
+void ImageBrowserBackend::saveRecentFoldersToSettings()
+{
+    QSettings settings("WangChang", "ImageBrowser");
+    settings.setValue("RecentFolders", m_recentFolders);
+}
+
 void ImageBrowserBackend::loadImagesFromFolder(const QString &folder)
 {
     QDir dir(folder);
-    if (!dir.exists()) return;
+    if (!dir.exists()) {
+        // 如果文件夹不存在了，从记录中剔除
+        m_recentFolders.removeAll(folder);
+        saveRecentFoldersToSettings();
+        emit recentFoldersChanged();
+        emit showMessage(tr("文件夹不存在或已被删除"));
+        return;
+    }
+
+    // --- 新增：更新最近打开列表 (最多5个) ---
+    m_recentFolders.removeAll(folder); // 移除旧位置
+    m_recentFolders.prepend(folder);   // 放到最前面
+    while (m_recentFolders.size() > 5) {
+        m_recentFolders.removeLast();  // 保持最多 5 个
+    }
+    saveRecentFoldersToSettings();
+    emit recentFoldersChanged();
 
     dir.setNameFilters(IMAGE_SUFFIXES);
     dir.setFilter(QDir::Files | QDir::NoDotAndDotDot);

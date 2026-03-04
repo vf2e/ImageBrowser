@@ -14,6 +14,7 @@ class ImageBrowserBackend : public QObject
     Q_PROPERTY(int totalCount READ totalCount NOTIFY totalCountChanged)
     Q_PROPERTY(int favoriteCount READ favoriteCount NOTIFY favoriteCountChanged)
     Q_PROPERTY(bool isCurrentFavorite READ isCurrentFavorite NOTIFY isCurrentFavoriteChanged)
+    Q_PROPERTY(QStringList recentFolders READ recentFolders NOTIFY recentFoldersChanged)
 
 public:
     explicit ImageBrowserBackend(QObject *parent = nullptr);
@@ -26,6 +27,9 @@ public:
 
     void setCurrentIndex(int index);
     bool isCurrentFavorite() const;
+
+    QStringList recentFolders() const { return m_recentFolders; }
+    Q_INVOKABLE void loadFolder(const QString &folderPath);
 
 public slots:
     void selectFolder();
@@ -42,6 +46,7 @@ signals:
     void favoriteCountChanged();
     void showMessage(const QString &msg);
     void isCurrentFavoriteChanged();
+    void recentFoldersChanged();
 
 private:
     QStringList m_imagePaths;
@@ -57,6 +62,12 @@ private:
     void loadFavoritesLog();
     void saveProgress();
     int loadProgress();
+
+    QStringList m_recentFolders;
+
+    // 内部读写最近文件夹记录的方法
+    void loadRecentFoldersFromSettings();
+    void saveRecentFoldersToSettings();
 };
 
 #endif // IMAGEBROWSERBACKEND_H
