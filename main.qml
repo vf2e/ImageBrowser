@@ -104,7 +104,7 @@ ApplicationWindow {
                     opacity: 0
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: 400;
+                            duration: 0;
                             easing.type: Easing.OutCubic
                             onRunningChanged: {
                                 if (!running && newImage.opacity === 1.0) {
