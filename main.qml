@@ -76,16 +76,12 @@ ApplicationWindow {
             border.width: 1
             border.color: "#2A2A35"
 
-            Image {
-                id: imageDisplay
+            // 新增：双缓冲图层包装器
+            Item {
+                id: imageDisplayWrapper
                 anchors.fill: parent
                 anchors.margins: 1
-                fillMode: Image.PreserveAspectFit
-                asynchronous: true
-                autoTransform: true
-                sourceSize: Qt.size(width, height)
-                source: backend.currentImagePath ? "file:///" + backend.currentImagePath : ""
-                visible: backend.totalCount > 0
+
                 layer.enabled: true
                 layer.effect: OpacityMask {
                     maskSource: Rectangle {
@@ -95,14 +91,55 @@ ApplicationWindow {
                     }
                 }
 
-                opacity: 0
-                Behavior on opacity {
-                    NumberAnimation { duration: 400; easing.type: Easing.OutCubic }
+                property string currentSrc: backend.currentImagePath ? "file:///" + backend.currentImagePath : ""
+
+                // 底层：用于定格上一张图片
+                Image {
+                    id: oldImage
+                    anchors.fill: parent
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    autoTransform: true
+                    sourceSize: Qt.size(width, height)
+                    visible: backend.totalCount > 0
                 }
 
-                onStatusChanged: {
-                    if (status === Image.Ready) opacity = 1.0
-                    else if (status === Image.Loading) opacity = 0
+                // 顶层：用于异步加载新图片并执行渐显动画
+                Image {
+                    id: newImage
+                    anchors.fill: parent
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                    autoTransform: true
+                    sourceSize: Qt.size(width, height)
+                    visible: backend.totalCount > 0
+
+                    opacity: 0
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: 50;
+                            easing.type: Easing.OutCubic
+                            onRunningChanged: {
+                                // 动画结束且已完全显示时，将底层图片替换为当前图片，为下一次切换做准备
+                                if (!running && newImage.opacity === 1.0) {
+                                    oldImage.source = newImage.source;
+                                }
+                            }
+                        }
+                    }
+
+                    onStatusChanged: {
+                        if (status === Image.Ready) opacity = 1.0
+                        else if (status === Image.Loading) opacity = 0
+                    }
+                }
+
+                // 监听后端路径变化
+                onCurrentSrcChanged: {
+                    if (newImage.status === Image.Ready) {
+                        oldImage.source = newImage.source;
+                    }
+                    newImage.source = currentSrc;
                 }
 
                 // 收藏角标
