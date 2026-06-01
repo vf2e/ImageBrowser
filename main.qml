@@ -12,25 +12,6 @@ ApplicationWindow {
     title: qsTr("图片浏览器")
     color: "#0F0F13"
 
-    // --- 逻辑与状态管理 ---
-    QtObject {
-        id: uiState
-        property bool showControls: true
-        property int edgeThreshold: 50
-
-        function activateControls() {
-            showControls = true
-            hideControlsTimer.restart()
-        }
-    }
-
-    Timer {
-        id: hideControlsTimer
-        interval: 3000
-        running: true
-        onTriggered: uiState.showControls = false
-    }
-
     Connections {
         target: backend
         function onShowMessage(msg) { toast.show(msg) }
@@ -60,7 +41,6 @@ ApplicationWindow {
                                 case Qt.Key_Space: backend.toggleFavoriteForCurrent(); break;
                                 default: return;
                             }
-                            uiState.activateControls();
                             event.accepted = true;
                         }
 
@@ -70,13 +50,20 @@ ApplicationWindow {
         Rectangle {
             id: imageContainer
             anchors.fill: parent
-            anchors.margins: 16
+            // 动态边距：当有图片时自动收缩，为固定的上下工具栏腾出空间，避免遮挡
+            anchors.topMargin: backend.totalCount > 0 ? 88 : 16
+            anchors.bottomMargin: backend.totalCount > 0 ? 96 : 16
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
             radius: 16
             color: "#1A1A1F"
             border.width: 1
             border.color: "#2A2A35"
 
-            // 新增：双缓冲图层包装器
+            Behavior on anchors.topMargin { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
+            Behavior on anchors.bottomMargin { NumberAnimation { duration: 400; easing.type: Easing.OutExpo } }
+
+            // 双缓冲图层包装器
             Item {
                 id: imageDisplayWrapper
                 anchors.fill: parent
@@ -117,10 +104,9 @@ ApplicationWindow {
                     opacity: 0
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: 50;
+                            duration: 400;
                             easing.type: Easing.OutCubic
                             onRunningChanged: {
-                                // 动画结束且已完全显示时，将底层图片替换为当前图片，为下一次切换做准备
                                 if (!running && newImage.opacity === 1.0) {
                                     oldImage.source = newImage.source;
                                 }
@@ -142,46 +128,48 @@ ApplicationWindow {
                     newImage.source = currentSrc;
                 }
 
-                // 收藏角标
+                // 优化后的收藏角标
                 Rectangle {
                     id: favoriteBadge
-                    anchors { top: parent.top; right: parent.right; margins: 20 }
-                    width: 48; height: 48; radius: 24
-                    color: "#CC1A1A1F"
-                    border.color: "#4DFFFFFF"
-                    border.width: 1.5
+                    anchors { top: parent.top; right: parent.right; margins: 24 }
+                    width: 56; height: 56; radius: 28
+                    color: "#E61A1A1F" // 毛玻璃质感半透明底色
+                    border.color: "#FFD700"
+                    border.width: 2
                     visible: backend.isCurrentFavorite
                     scale: visible ? 1.0 : 0.0
 
                     layer.enabled: true
                     layer.effect: DropShadow {
-                        color: "#FFD700"
-                        radius: 12
+                        color: "#80FFD700"
+                        radius: 20
                         samples: 25
-                        spread: 0.3
+                        spread: 0.15
                     }
 
                     Behavior on scale {
-                        NumberAnimation { duration: 300; easing.type: Easing.OutBack }
+                        NumberAnimation { duration: 400; easing.type: Easing.OutBack }
                     }
 
                     Text {
                         anchors.centerIn: parent
                         text: "⭐"
-                        font { pixelSize: 24; bold: true }
+                        font { pixelSize: 26; bold: true }
                         color: "#FFD700"
+
+                        // 呼吸发光动画
+                        SequentialAnimation on scale {
+                            loops: Animation.Infinite
+                            running: favoriteBadge.visible
+                            NumberAnimation { from: 1.0; to: 1.15; duration: 1000; easing.type: Easing.InOutSine }
+                            NumberAnimation { from: 1.15; to: 1.0; duration: 1000; easing.type: Easing.InOutSine }
+                        }
                     }
                 }
 
                 MouseArea {
                     anchors.fill: parent
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    hoverEnabled: true
-                    onPositionChanged: (mouse) => {
-                                           if (mouse.y < uiState.edgeThreshold || mouse.y > (height - uiState.edgeThreshold)) {
-                                               uiState.activateControls()
-                                           }
-                                       }
                     onWheel: (wheel) => {
                                  if (wheel.angleDelta.y > 0) backend.previousImage();
                                  else backend.nextImage();
@@ -213,6 +201,23 @@ ApplicationWindow {
                 verticalOffset: 4
             }
 
+            // 扩大点击热区：将 MouseArea 覆盖整个占位框
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onEntered: placeholderText.color = "#FFFFFF"
+                onExited: placeholderText.color = "#AAAAAA"
+                onClicked: {
+                    if (backend.recentFolders.length > 0) {
+                        recentFolderMenu.open();
+                    } else {
+                        backend.selectFolder();
+                    }
+                    mainContainer.forceActiveFocus();
+                }
+            }
+
             Column {
                 anchors.centerIn: parent
                 spacing: 20
@@ -229,27 +234,11 @@ ApplicationWindow {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: qsTr("请选择一个图片文件夹")
                     font {
-                        pixelSize: 18;
-                        weight: Font.Medium;
+                        pixelSize: 18; weight: Font.Medium;
                         family: "Microsoft YaHei, Segoe UI"
                     }
                     color: "#AAAAAA"
-
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onEntered: placeholderText.color = "#FFFFFF"
-                        onExited: placeholderText.color = "#AAAAAA"
-                        onClicked: {
-                            if (backend.recentFolders.length > 0) {
-                                recentFolderMenu.open();
-                            } else {
-                                backend.selectFolder(); // 如果没有历史记录，直接打开系统弹窗
-                            }
-                            mainContainer.forceActiveFocus();
-                        }
-                    }
+                    Behavior on color { ColorAnimation { duration: 150 } }
                 }
             }
 
@@ -262,16 +251,21 @@ ApplicationWindow {
         }
     }
 
-    // --- 顶部工具栏 ---
+    // --- 顶部工具栏 (固定布局) ---
     Rectangle {
         id: topBar
         anchors.horizontalCenter: parent.horizontalCenter
-        y: uiState.showControls ? 20 : -height
+        anchors.top: parent.top
+        anchors.topMargin: 20
         width: Math.min(parent.width * 0.9, 900)
         height: 52
         radius: 16
 
-        // 背景渐变
+        // 仅当有图片时才显示，无图片时隐藏
+        visible: backend.totalCount > 0
+        opacity: visible ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 400 } }
+
         gradient: Gradient {
             GradientStop { position: 0.0; color: "#E6181820" }
             GradientStop { position: 1.0; color: "#E610101A" }
@@ -290,22 +284,10 @@ ApplicationWindow {
             color: "#80000000"
         }
 
-        Behavior on y {
-            NumberAnimation { duration: 400; easing.type: Easing.OutBack }
-        }
-
-        Behavior on opacity {
-            NumberAnimation { duration: 300 }
-        }
-
-        opacity: uiState.showControls ? 1.0 : 0.0
-
         MouseArea {
             id: topBarMouse
             anchors.fill: parent
             hoverEnabled: true
-            onEntered: hideControlsTimer.stop()
-            onExited: hideControlsTimer.restart()
             onClicked: mainContainer.forceActiveFocus()
         }
 
@@ -331,9 +313,7 @@ ApplicationWindow {
                     font.pixelSize: 20
                     opacity: folderMouse.containsMouse ? 1.0 : 0.7
                     scale: folderMouse.pressed ? 0.9 : 1.0
-                    Behavior on scale {
-                        NumberAnimation { duration: 150 }
-                    }
+                    Behavior on scale { NumberAnimation { duration: 150 } }
                 }
 
                 MouseArea {
@@ -342,7 +322,6 @@ ApplicationWindow {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        // backend.selectFolder();
                         recentFolderMenu.open();
                         mainContainer.forceActiveFocus()
                     }
@@ -370,8 +349,7 @@ ApplicationWindow {
                     verticalAlignment: Text.AlignVCenter
                     text: backend.currentImagePath ? backend.currentImagePath : qsTr("未选择路径")
                     font {
-                        pixelSize: 13;
-                        weight: Font.Normal;
+                        pixelSize: 13; weight: Font.Normal;
                         family: "Consolas, Microsoft YaHei"
                     }
                     color: "#AAAAAA"
@@ -402,8 +380,7 @@ ApplicationWindow {
                         text: backend.favoriteCount
                         color: "#FFD700"
                         font {
-                            pixelSize: 16;
-                            weight: Font.Bold;
+                            pixelSize: 16; weight: Font.Bold;
                             family: "Consolas"
                         }
                         anchors.verticalCenter: parent.verticalCenter
@@ -419,23 +396,15 @@ ApplicationWindow {
                 radius: 12
 
                 gradient: Gradient {
-                    GradientStop {
-                        position: 0.0;
-                        color: exportMouse.containsMouse ? "#4F46E5" : "#4338CA"
-                    }
-                    GradientStop {
-                        position: 1.0;
-                        color: exportMouse.containsMouse ? "#3730A3" : "#312E81"
-                    }
+                    GradientStop { position: 0.0; color: exportMouse.containsMouse ? "#4F46E5" : "#4338CA" }
+                    GradientStop { position: 1.0; color: exportMouse.containsMouse ? "#3730A3" : "#312E81" }
                 }
 
                 border.width: 1
                 border.color: exportMouse.containsMouse ? "#818CF8" : "#4F46E5"
 
                 scale: exportMouse.pressed ? 0.95 : 1.0
-                Behavior on scale {
-                    NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
-                }
+                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
 
                 layer.enabled: true
                 layer.effect: DropShadow {
@@ -444,9 +413,7 @@ ApplicationWindow {
                     radius: 16
                     samples: 25
                     verticalOffset: 4
-                    Behavior on color {
-                        ColorAnimation { duration: 300 }
-                    }
+                    Behavior on color { ColorAnimation { duration: 300 } }
                 }
 
                 Row {
@@ -457,8 +424,7 @@ ApplicationWindow {
                         text: qsTr("导出")
                         color: "white"
                         font {
-                            pixelSize: 14;
-                            weight: Font.DemiBold;
+                            pixelSize: 14; weight: Font.DemiBold;
                             letterSpacing: 0.5
                         }
                     }
@@ -478,14 +444,19 @@ ApplicationWindow {
         }
     }
 
-    // --- 底部工具栏 ---
+    // --- 底部工具栏 (固定布局) ---
     Rectangle {
         id: bottomBar
         anchors.horizontalCenter: parent.horizontalCenter
-        y: uiState.showControls ? parent.height - height - 20 : parent.height
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 20
         width: Math.min(parent.width * 0.9, 900)
         height: 60
         radius: 20
+
+        visible: backend.totalCount > 0
+        opacity: visible ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 400 } }
 
         gradient: Gradient {
             GradientStop { position: 0.0; color: "#E6181820" }
@@ -503,15 +474,6 @@ ApplicationWindow {
             radius: 20
             samples: 25
             color: "#80000000"
-        }
-
-        Behavior on y {
-            NumberAnimation { duration: 400; easing.type: Easing.OutBack }
-        }
-
-        opacity: uiState.showControls ? 1.0 : 0.0
-        Behavior on opacity {
-            NumberAnimation { duration: 300 }
         }
 
         RowLayout {
@@ -534,33 +496,53 @@ ApplicationWindow {
                     anchors.centerIn: parent
                     text: backend.totalCount > 0 ? (backend.currentIndex + 1) + " / " + backend.totalCount : "0 / 0"
                     font {
-                        pixelSize: 14;
-                        weight: Font.Medium;
+                        pixelSize: 14; weight: Font.Medium;
                         family: "Consolas"
                     }
                     color: "white"
                 }
             }
 
-            // 进度条
-            ProgressBar {
+            // 进度条 (使用 Slider 替换 ProgressBar 以支持拖拽)
+            Slider {
                 id: customProgress
                 Layout.fillWidth: true
                 from: 0
-                to: Math.max(1, backend.totalCount - 1)
+                to: Math.max(0, backend.totalCount - 1)
+                stepSize: 1
+
+                // 初始绑定
                 value: backend.currentIndex
 
-                background: Rectangle {
-                    implicitHeight: 6
-                    radius: 3
-                    color: "#2A2A35"
+                // 核心修复 2：监听后端信号，在外部（如键盘）切换图片时手动更新滑块，防止拖拽破坏静态绑定
+                Connections {
+                    target: backend
+                    function onCurrentIndexChanged() {
+                        if (!customProgress.pressed) {
+                            customProgress.value = backend.currentIndex;
+                        }
+                    }
                 }
 
-                contentItem: Item {
+                // 监听拖拽和点击改变事件
+                onMoved: {
+                    // 核心修复 1：不调用函数，而是直接对属性赋值，自动触发 Q_PROPERTY 的 WRITE 操作
+                    backend.currentIndex = Math.round(value);
+                }
+
+                // 轨道背景与已阅进度渐变
+                background: Rectangle {
+                    x: customProgress.leftPadding
+                    y: customProgress.topPadding + customProgress.availableHeight / 2 - height / 2
                     implicitHeight: 6
+                    width: customProgress.availableWidth
+                    height: implicitHeight
+                    radius: 3
+                    color: "#2A2A35"
+
                     Rectangle {
                         width: customProgress.visualPosition * parent.width
-                        height: 6
+                        height: parent.height
                         radius: 3
 
                         gradient: Gradient {
@@ -569,24 +551,28 @@ ApplicationWindow {
                             GradientStop { position: 0.5; color: "#8B5CF6" }
                             GradientStop { position: 1.0; color: "#10B981" }
                         }
-
-                        Rectangle {
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 8; height: 8; radius: 4
-                            color: "#FFFFFF"
-                            layer.enabled: true
-                            layer.effect: DropShadow {
-                                radius: 8;
-                                color: "#8B5CF6";
-                                samples: 12
-                            }
-                        }
                     }
                 }
 
-                Behavior on value {
-                    NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                // 拖拽滑块 (Handle)
+                handle: Rectangle {
+                    x: customProgress.leftPadding + customProgress.visualPosition * (customProgress.availableWidth - width)
+                    y: customProgress.topPadding + customProgress.availableHeight / 2 - height / 2
+                    width: 12
+                    height: 12
+                    radius: 6
+                    color: "#FFFFFF"
+
+                    // 增加交互反馈：拖拽时触点轻微放大
+                    scale: customProgress.pressed ? 1.3 : 1.0
+                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                    layer.enabled: true
+                    layer.effect: DropShadow {
+                        radius: 8
+                        color: "#8B5CF6"
+                        samples: 12
+                    }
                 }
             }
 
@@ -600,8 +586,7 @@ ApplicationWindow {
                     delegate: Text {
                         text: modelData
                         font {
-                            pixelSize: 12;
-                            weight: Font.Normal;
+                            pixelSize: 12; weight: Font.Normal;
                             family: "Microsoft YaHei, Segoe UI"
                         }
                         color: "#888888"
@@ -617,10 +602,9 @@ ApplicationWindow {
         anchors.centerIn: parent
         width: 480
         height: contentColumn.height + 40
-        modal: true // 模态框，点击背景自动关闭
+        modal: true
         focus: true
 
-        // 入场/出场动画
         enter: Transition {
             NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 250; easing.type: Easing.OutCubic }
             NumberAnimation { property: "scale"; from: 0.95; to: 1.0; duration: 350; easing.type: Easing.OutBack }
@@ -630,9 +614,8 @@ ApplicationWindow {
             NumberAnimation { property: "scale"; from: 1.0; to: 0.95; duration: 200 }
         }
 
-        // 弹窗背景设计
         background: Rectangle {
-            color: "#E61A1A1F" // 高级半透明暗灰
+            color: "#E61A1A1F"
             radius: 20
             border.width: 1.5
             border.color: "#2A2A35"
@@ -647,7 +630,6 @@ ApplicationWindow {
             }
         }
 
-        // 核心内容区
         Column {
             id: contentColumn
             anchors.centerIn: parent
@@ -662,7 +644,6 @@ ApplicationWindow {
                 bottomPadding: 8
             }
 
-            // 最近文件夹列表
             Repeater {
                 model: backend.recentFolders
                 delegate: Rectangle {
@@ -686,9 +667,9 @@ ApplicationWindow {
 
                         Text {
                             Layout.fillWidth: true
-                            text: modelData // 绑定绝对路径
+                            text: modelData
                             color: itemMouse.containsMouse ? "#FFFFFF" : "#CCCCCC"
-                            elide: Text.ElideLeft // 路径太长时，保留右侧（通常右侧包含当前文件夹名）
+                            elide: Text.ElideLeft
                             font { pixelSize: 13; family: "Consolas, Microsoft YaHei" }
                         }
                     }
@@ -706,7 +687,6 @@ ApplicationWindow {
                 }
             }
 
-            // 当没有历史记录时显示提示
             Text {
                 visible: backend.recentFolders.length === 0
                 text: qsTr("暂无历史记录")
@@ -716,7 +696,6 @@ ApplicationWindow {
                 bottomPadding: 8
             }
 
-            // 分割线
             Rectangle {
                 width: parent.width
                 height: 1
@@ -724,7 +703,6 @@ ApplicationWindow {
                 anchors.horizontalCenter: parent.horizontalCenter
             }
 
-            // 浏览本地文件夹按钮
             Rectangle {
                 width: contentColumn.width
                 height: 50
@@ -846,8 +824,7 @@ ApplicationWindow {
                     return "#F8FAFC";
                 }
                 font {
-                    pixelSize: 14;
-                    weight: Font.Medium;
+                    pixelSize: 14; weight: Font.Medium;
                     family: "Microsoft YaHei, Segoe UI"
                 }
                 anchors.verticalCenter: parent.verticalCenter
@@ -874,7 +851,6 @@ ApplicationWindow {
 
         function show(msg) {
             toast.message = msg;
-
             if (msg.indexOf("已收藏") !== -1) {
                 toast.type = "fav";
             } else if (msg.indexOf("取消") !== -1) {
