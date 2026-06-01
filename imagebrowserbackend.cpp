@@ -93,12 +93,12 @@ void ImageBrowserBackend::loadImagesFromFolder(const QString &folder)
         m_currentIndex = m_imagePaths.isEmpty() ? -1 : 0;
     }
 
-    // 3. 统一触发信号更新 UI
-    updateCurrentImagePath();
-
     emit imagePathsChanged();
     emit totalCountChanged();
     emit favoriteCountChanged();
+
+    // 3. 统一触发信号更新 UI
+    updateCurrentImagePath();
 }
 
 // --- 核心状态控制 ---
