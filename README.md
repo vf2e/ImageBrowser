@@ -72,7 +72,7 @@ ImageBrowser/
 
 ### 最新版本下载
 
-[⬇️ 点击下载 ImageBrowser v1.0.0 安装包 (Windows)](https://github.com/vf2e/ImageBrowser/releases/download/V1.0.0/ImageBrowser_v1.0.0_Setup.exe)
+[⬇️ 点击下载 ImageBrowser v1.0.1 安装包 (Windows)](https://github.com/vf2e/ImageBrowser/releases/download/V1.0.0/ImageBrowser_v1.0.1_Setup.exe)
 
 ### 环境要求
 
