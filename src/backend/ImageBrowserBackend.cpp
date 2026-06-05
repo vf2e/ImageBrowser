@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QtConcurrent>
 #include <QSettings>
+#include <QTextStream>
 
 static const QStringList IMAGE_SUFFIXES = {"*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif", "*.webp"};
 
@@ -20,8 +21,6 @@ void ImageBrowserBackend::loadFolder(const QString &folderPath)
     loadImagesFromFolder(folderPath);
 }
 
-// --- 文件夹与图片加载逻辑 ---
-
 void ImageBrowserBackend::selectFolder()
 {
     QString folder = QFileDialog::getExistingDirectory(nullptr,
@@ -33,14 +32,12 @@ void ImageBrowserBackend::selectFolder()
     loadImagesFromFolder(folder);
 }
 
-// 读取持久化记录
 void ImageBrowserBackend::loadRecentFoldersFromSettings()
 {
     QSettings settings("WangChang", "ImageBrowser");
     m_recentFolders = settings.value("RecentFolders").toStringList();
 }
 
-// 保存持久化记录
 void ImageBrowserBackend::saveRecentFoldersToSettings()
 {
     QSettings settings("WangChang", "ImageBrowser");
@@ -51,7 +48,6 @@ void ImageBrowserBackend::loadImagesFromFolder(const QString &folder)
 {
     QDir dir(folder);
     if (!dir.exists()) {
-        // 如果文件夹不存在了，从记录中剔除
         m_recentFolders.removeAll(folder);
         saveRecentFoldersToSettings();
         emit recentFoldersChanged();
@@ -59,11 +55,10 @@ void ImageBrowserBackend::loadImagesFromFolder(const QString &folder)
         return;
     }
 
-    // --- 新增：更新最近打开列表 (最多5个) ---
-    m_recentFolders.removeAll(folder); // 移除旧位置
-    m_recentFolders.prepend(folder);   // 放到最前面
+    m_recentFolders.removeAll(folder);
+    m_recentFolders.prepend(folder);
     while (m_recentFolders.size() > 5) {
-        m_recentFolders.removeLast();  // 保持最多 5 个
+        m_recentFolders.removeLast();
     }
     saveRecentFoldersToSettings();
     emit recentFoldersChanged();
@@ -81,11 +76,9 @@ void ImageBrowserBackend::loadImagesFromFolder(const QString &folder)
 
     m_imagePaths = imageFiles;
 
-    // 1. 恢复收藏夹数据
     m_favorites.clear();
     loadFavoritesLog();
 
-    // 2. 恢复上次浏览进度
     int savedIndex = loadProgress();
     if (savedIndex >= 0 && savedIndex < m_imagePaths.size()) {
         m_currentIndex = savedIndex;
@@ -97,11 +90,8 @@ void ImageBrowserBackend::loadImagesFromFolder(const QString &folder)
     emit totalCountChanged();
     emit favoriteCountChanged();
 
-    // 3. 统一触发信号更新 UI
     updateCurrentImagePath();
 }
-
-// --- 核心状态控制 ---
 
 QString ImageBrowserBackend::currentImagePath() const
 {
@@ -127,13 +117,9 @@ void ImageBrowserBackend::setCurrentIndex(int index)
     if (index >= 0 && index < m_imagePaths.size() && index != m_currentIndex) {
         m_currentIndex = index;
         updateCurrentImagePath();
-
-        // 每次切换图片时实时保存当前进度
         saveProgress();
     }
 }
-
-// --- 交互功能 ---
 
 void ImageBrowserBackend::nextImage()
 {
@@ -155,10 +141,10 @@ void ImageBrowserBackend::toggleFavoriteForCurrent()
     QString fileName = QFileInfo(path).fileName();
     if (m_favorites.contains(path)) {
         m_favorites.remove(path);
-        emit showMessage(tr("已取消收藏: %1").arg(fileName));
+        emit showMessage(QString::fromUtf8(u8"已取消收藏: %1").arg(fileName), QStringLiteral("unfav"));
     } else {
         m_favorites.insert(path);
-        emit showMessage(tr("已收藏: %1").arg(fileName));
+        emit showMessage(QString::fromUtf8(u8"已收藏: %1").arg(fileName), QStringLiteral("fav"));
     }
 
     saveFavoritesLog();
@@ -166,13 +152,10 @@ void ImageBrowserBackend::toggleFavoriteForCurrent()
     emit isCurrentFavoriteChanged();
 }
 
-// --- 配置持久化逻辑 (进度与收藏) ---
-
 void ImageBrowserBackend::saveProgress()
 {
     if (m_currentFolder.isEmpty() || m_currentIndex < 0) return;
 
-    // 在文件夹内创建隐藏配置
     QSettings settings(m_currentFolder + "/browser_config.ini", QSettings::IniFormat);
     settings.setValue("LastIndex", m_currentIndex);
     settings.setValue("LastFileName", QFileInfo(currentImagePath()).fileName());
@@ -187,7 +170,6 @@ int ImageBrowserBackend::loadProgress()
     int savedIndex = settings.value("LastIndex", -1).toInt();
     QString savedName = settings.value("LastFileName", "").toString();
 
-    // 优先匹配文件名，防止因外部增删文件导致的索引偏移
     if (!savedName.isEmpty()) {
         for (int i = 0; i < m_imagePaths.size(); ++i) {
             if (QFileInfo(m_imagePaths[i]).fileName() == savedName) {
@@ -204,6 +186,7 @@ void ImageBrowserBackend::saveFavoritesLog()
     QFile file(m_currentFolder + "/favorites.txt");
     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QTextStream out(&file);
+        out.setCodec("UTF-8");
         for (const QString &path : m_favorites) {
             out << QFileInfo(path).fileName() << "\n";
         }
@@ -216,6 +199,7 @@ void ImageBrowserBackend::loadFavoritesLog()
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return;
 
     QTextStream in(&file);
+    in.setCodec("UTF-8");
     while (!in.atEnd()) {
         QString fileName = in.readLine().trimmed();
         if (fileName.isEmpty()) continue;
@@ -226,8 +210,6 @@ void ImageBrowserBackend::loadFavoritesLog()
         }
     }
 }
-
-// --- 异步导出 ---
 
 void ImageBrowserBackend::exportFavorites()
 {
@@ -261,6 +243,16 @@ void ImageBrowserBackend::exportFavorites()
                 }
             }
         }
-        emit showMessage(tr("导出完成，成功复制 %1 张照片到 %2").arg(successCount).arg(destDir));
+        QMetaObject::invokeMethod(this, "notifyExportComplete", Qt::QueuedConnection,
+                                  Q_ARG(int, successCount),
+                                  Q_ARG(QString, destDir));
     });
+}
+
+void ImageBrowserBackend::notifyExportComplete(int successCount, const QString &destDir)
+{
+    emit showMessage(QString::fromUtf8(u8"导出完成，成功复制 %1 张照片到 %2")
+                         .arg(successCount)
+                         .arg(destDir),
+                     QStringLiteral("info"));
 }

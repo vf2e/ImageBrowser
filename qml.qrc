@@ -1,6 +1,13 @@
 <RCC>
     <qresource prefix="/">
-        <file>main.qml</file>
+        <file>qml/main.qml</file>
+        <file>qml/components/BackgroundGradient.qml</file>
+        <file>qml/components/ImageViewer.qml</file>
+        <file>qml/components/EmptyPlaceholder.qml</file>
+        <file>qml/components/TopToolbar.qml</file>
+        <file>qml/components/BottomToolbar.qml</file>
+        <file>qml/components/RecentFolderPopup.qml</file>
+        <file>qml/components/ToastMessage.qml</file>
         <file>assets/icons/logo.ico</file>
     </qresource>
 </RCC>
