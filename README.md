@@ -57,9 +57,22 @@ ImageBrowser/
 ├── installer/
 │   └── ImageBrowser.iss        # Inno Setup 安装脚本
 ├── docs/
-│   └── qmake-to-cmake-migration.md  # qmake 转 CMake 迁移文档
+│   ├── qmake-to-cmake-migration.md  # qmake 转 CMake 迁移文档
+│   ├── testing.md                   # 测试体系总览与运行指南
+│   ├── testing-testcases.md         # 全量用例明细（69 条）
+│   ├── testing-report.md            # HTML 测试报告生成指南
+│   ├── coverage.md                  # C++ 覆盖率报告指南
+│   └── development-log.md           # 项目开发日志（详细）
+├── tests/
+│   ├── tst_imagebrowserbackend.cpp  # C++ 后端单元测试（38 用例）
+│   ├── tst_qml.cpp                  # QML 组件测试入口
+│   ├── TestFixture.h                # C++ 测试夹具
+│   └── qml/                         # QML 测试用例与 MockBackend
 ├── scripts/
 │   ├── build_release.bat       # CMake Release 构建
+│   ├── run_tests.bat           # 一键运行全部测试（--report 生成 HTML）
+│   ├── generate_test_report.bat # 构建 + 测试 + HTML 报告
+│   ├── run_coverage.bat        # C++ 覆盖率（OpenCppCoverage）
 │   └── package.bat             # 一键打包（构建 + 部署 + 安装包）
 ├── CMakeLists.txt
 └── qml.qrc
@@ -130,6 +143,36 @@ cmake --build build-release --config Release
 构建产物位于 `build-release\ImageBrowser.exe`（NMake/Ninja）或 `build-release\Release\ImageBrowser.exe`（Visual Studio 生成器）。
 
 > qmake 转 CMake 的完整过程见 [docs/qmake-to-cmake-migration.md](docs/qmake-to-cmake-migration.md)。
+
+### 单元测试
+
+项目包含三层自动化测试，合计 **69** 个用例：
+
+| 套件 | 框架 | 用例数 | 覆盖范围 |
+|------|------|--------|----------|
+| `tst_imagebrowserbackend` | Qt Test | 48 | 后端业务逻辑、信号、集成工作流 |
+| `tst_keyboard_integration` | Qt Test + QML | 4 | `main.qml` 快捷键与真实后端联动 |
+| `tst_qml` | Qt Quick Test | 17 | 全部 7 个 QML 组件绑定 |
+
+**常用命令（防忘）：**
+
+```bat
+scripts\run_tests.bat                  :: 跑完全部测试
+scripts\run_tests.bat --report         :: 跑测试 + 生成 HTML 报告
+scripts\generate_test_report.bat --open :: 构建、测试并打开报告
+scripts\run_coverage.bat              :: C++ 覆盖率（需 OpenCppCoverage）
+```
+
+成功时控制台显示 `[OK] All tests passed`。报告与日志在 `build-release/tests/`、`build-release/test-report/`。
+
+**文档：**
+
+- **运行方式速查（推荐收藏）**：[docs/testing.md#运行方式速查](docs/testing.md#运行方式速查)
+- 测试总览与故障排查：[docs/testing.md](docs/testing.md)
+- HTML 测试报告：[docs/testing-report.md](docs/testing-report.md)
+- 逐用例前置条件与断言：[docs/testing-testcases.md](docs/testing-testcases.md)
+- 代码覆盖率：[docs/coverage.md](docs/coverage.md)
+- 开发历程与技术决策：[docs/development-log.md](docs/development-log.md)
 
 手动部署 Qt 依赖：
 

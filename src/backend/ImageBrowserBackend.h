@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QStringList>
 #include <QSet>
+#include <functional>
 
 class ImageBrowserBackend : public QObject
 {
@@ -17,7 +18,9 @@ class ImageBrowserBackend : public QObject
     Q_PROPERTY(QStringList recentFolders READ recentFolders NOTIFY recentFoldersChanged)
 
 public:
-    explicit ImageBrowserBackend(QObject *parent = nullptr);
+    explicit ImageBrowserBackend(QObject *parent = nullptr,
+                                 const QString &settingsOrganization = QStringLiteral("WangChang"),
+                                 const QString &settingsApplication = QStringLiteral("ImageBrowser"));
 
     QStringList imagePaths() const { return m_imagePaths; }
     int currentIndex() const { return m_currentIndex; }
@@ -30,6 +33,10 @@ public:
 
     QStringList recentFolders() const { return m_recentFolders; }
     Q_INVOKABLE void loadFolder(const QString &folderPath);
+
+    void setSettingsScope(const QString &organization, const QString &application);
+    void setExportDestRoot(const QString &root);
+    void setFolderPicker(const std::function<QString()> &picker);
 
 public slots:
     void selectFolder();
@@ -66,6 +73,11 @@ private:
     int loadProgress();
 
     QStringList m_recentFolders;
+
+    QString m_settingsOrganization = QStringLiteral("WangChang");
+    QString m_settingsApplication = QStringLiteral("ImageBrowser");
+    QString m_exportDestRoot = QStringLiteral("D:/收藏");
+    std::function<QString()> m_folderPicker;
 
     void loadRecentFoldersFromSettings();
     void saveRecentFoldersToSettings();

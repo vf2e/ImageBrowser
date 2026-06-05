@@ -61,3 +61,9 @@ target_link_libraries(ImageBrowser PRIVATE
     Qt5::Widgets
     Qt5::Concurrent
 )
+
+option(IMAGEBROWSER_BUILD_TESTS "Build unit tests" ON)
+if(IMAGEBROWSER_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

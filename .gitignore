@@ -1,7 +1,9 @@
 build
 build-release
+build-coverage
 dist
 output
+coverage-report
 
 # CMake
 CMakeCache.txt

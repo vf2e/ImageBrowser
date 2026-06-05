@@ -10,7 +10,12 @@
 
 static const QStringList IMAGE_SUFFIXES = {"*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif", "*.webp"};
 
-ImageBrowserBackend::ImageBrowserBackend(QObject *parent) : QObject(parent)
+ImageBrowserBackend::ImageBrowserBackend(QObject *parent,
+                                         const QString &settingsOrganization,
+                                         const QString &settingsApplication)
+    : QObject(parent)
+    , m_settingsOrganization(settingsOrganization)
+    , m_settingsApplication(settingsApplication)
 {
     loadRecentFoldersFromSettings();
 }
@@ -21,11 +26,32 @@ void ImageBrowserBackend::loadFolder(const QString &folderPath)
     loadImagesFromFolder(folderPath);
 }
 
+void ImageBrowserBackend::setSettingsScope(const QString &organization, const QString &application)
+{
+    m_settingsOrganization = organization;
+    m_settingsApplication = application;
+}
+
+void ImageBrowserBackend::setExportDestRoot(const QString &root)
+{
+    m_exportDestRoot = root;
+}
+
+void ImageBrowserBackend::setFolderPicker(const std::function<QString()> &picker)
+{
+    m_folderPicker = picker;
+}
+
 void ImageBrowserBackend::selectFolder()
 {
-    QString folder = QFileDialog::getExistingDirectory(nullptr,
-                                                       tr("选择照片文件夹"),
-                                                       QStandardPaths::writableLocation(QStandardPaths::PicturesLocation));
+    QString folder;
+    if (m_folderPicker) {
+        folder = m_folderPicker();
+    } else {
+        folder = QFileDialog::getExistingDirectory(nullptr,
+                                                   tr("选择照片文件夹"),
+                                                   QStandardPaths::writableLocation(QStandardPaths::PicturesLocation));
+    }
     if (folder.isEmpty()) return;
 
     m_currentFolder = folder;
@@ -34,13 +60,13 @@ void ImageBrowserBackend::selectFolder()
 
 void ImageBrowserBackend::loadRecentFoldersFromSettings()
 {
-    QSettings settings("WangChang", "ImageBrowser");
+    QSettings settings(m_settingsOrganization, m_settingsApplication);
     m_recentFolders = settings.value("RecentFolders").toStringList();
 }
 
 void ImageBrowserBackend::saveRecentFoldersToSettings()
 {
-    QSettings settings("WangChang", "ImageBrowser");
+    QSettings settings(m_settingsOrganization, m_settingsApplication);
     settings.setValue("RecentFolders", m_recentFolders);
 }
 
@@ -218,7 +244,7 @@ void ImageBrowserBackend::exportFavorites()
         return;
     }
 
-    QString destRoot = "D:/收藏";
+    QString destRoot = m_exportDestRoot;
     QString folderName = QFileInfo(m_currentFolder).fileName();
     if (folderName.isEmpty()) folderName = "未知文件夹";
     QString destDir = destRoot + "/" + folderName;

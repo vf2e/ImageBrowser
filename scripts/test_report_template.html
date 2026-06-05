@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>ImageBrowser Test Report</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --pass: #059669;
+      --pass-bg: #ecfdf5;
+      --fail: #dc2626;
+      --fail-bg: #fef2f2;
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; }
+    .hero {
+      background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.25);
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 1.75rem; }
+    .hero .status {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-weight: 600;
+      background: rgba(255,255,255,0.2);
+    }
+    .hero .status.pass { background: rgba(16, 185, 129, 0.35); }
+    .hero .status.fail { background: rgba(239, 68, 68, 0.4); }
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .toolbar input {
+      flex: 1;
+      min-width: 220px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.95rem;
+    }
+    .toolbar a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px 20px;
+    }
+    .card.ok { border-left: 4px solid var(--pass); }
+    .card.bad { border-left: 4px solid var(--fail); }
+    .card h3 { margin: 0 0 8px; font-size: 0.95rem; }
+    .card .big { margin: 0; font-size: 2rem; font-weight: 700; }
+    .card .big span { font-size: 1.1rem; color: var(--muted); font-weight: 500; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin-bottom: 20px;
+    }
+    .panel h2 { margin: 0 0 12px; font-size: 1.1rem; }
+    .overall-bar {
+      height: 10px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 10px 0 6px;
+    }
+    .overall-bar > div {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #34d399);
+      border-radius: 999px;
+    }
+    .suite {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .suite-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .suite-head h2 { margin: 0; font-size: 1.05rem; }
+    .suite-stats { display: flex; align-items: center; gap: 10px; }
+    .suite-body { padding: 0 20px 18px; }
+    .suite.collapsed .suite-body { display: none; }
+    .suite.collapsed .chevron { transform: rotate(-90deg); }
+    .chevron { transition: transform 0.2s; display: inline-block; }
+    .progress {
+      height: 6px;
+      background: #f3f4f6;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #10b981;
+      border-radius: 999px;
+    }
+    .case-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    .case-table th, .case-table td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .case-table th { color: var(--muted); font-weight: 600; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .badge-pass { background: var(--pass-bg); color: var(--pass); }
+    .badge-fail { background: var(--fail-bg); color: var(--fail); }
+    .pill {
+      background: #f3f4f6;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+    }
+    .muted { color: var(--muted); }
+    .fail-card {
+      border: 1px solid #fecaca;
+      background: #fff7f7;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .fail-card-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.85rem;
+      background: #f9fafb;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    details summary { cursor: pointer; color: var(--accent); }
+    .hidden { display: none !important; }
+    footer { margin-top: 28px; text-align: center; color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>ImageBrowser 单元测试报告</h1>
+      <p>生成时间：{{GENERATED_AT}} · 构建目录：<code>{{BUILD_DIR}}</code></p>
+      <span class="status {{OVERALL_STATUS}}">{{OVERALL_LABEL}} · {{PASS_RATE}}% 通过率（{{TOTAL_PASSED}}/{{TOTAL_BUSINESS}}）</span>
+    </div>
+
+    <div class="toolbar">
+      <input type="search" id="filter" placeholder="搜索用例名称..." oninput="filterCases(this.value)"/>
+      <a href="../tests/reports/backend.xml">backend.xml</a>
+      <a href="../tests/reports/qml.xml">qml.xml</a>
+      <a href="../tests/reports/keyboard.xml">keyboard.xml</a>
+    </div>
+
+    <div class="grid">{{SUMMARY_CARDS}}</div>
+
+    <div class="panel">
+      <h2>总体概览</h2>
+      <div class="overall-bar"><div style="width:{{PASS_RATE}}%"></div></div>
+      <p class="muted">共 {{TOTAL_BUSINESS}} 项业务用例，{{TOTAL_PASSED}} 通过，{{TOTAL_FAILED}} 失败。</p>
+    </div>
+
+    <div class="panel">
+      <h2>失败摘要</h2>
+      {{FAILED_BLOCKS}}
+    </div>
+
+    {{SUITE_SECTIONS}}
+
+    <footer>由 scripts/generate_test_report.ps1 自动生成 · Qt Test JUnit XML → HTML</footer>
+  </div>
+  <script>
+    function toggleSuite(id) {
+      const section = document.getElementById('suite-' + id);
+      section.classList.toggle('collapsed');
+    }
+    function filterCases(query) {
+      const q = (query || '').trim().toLowerCase();
+      document.querySelectorAll('.case-row').forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        row.classList.toggle('hidden', q && !name.includes(q));
+      });
+    }
+  </script>
+</body>
+</html>

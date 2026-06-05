@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt 5.15.2
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "5.15.2"
+          arch: win64_msvc2019_64
+          modules: qtquickcontrols2
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure CMake
+        run: >
+          cmake -S . -B build
+          -G "NMake Makefiles"
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH=${{ env.QT_ROOT_DIR }}
+          -DIMAGEBROWSER_BUILD_TESTS=ON
+
+      - name: Build tests
+        run: cmake --build build --target tst_imagebrowserbackend tst_qml
+
+      - name: Run tests
+        env:
+          QT_PLUGIN_PATH: ${{ env.QT_ROOT_DIR }}/plugins
+        run: ctest --test-dir build -C Release --output-on-failure
+        # keyboard_integration 需要真实窗口；offscreen 仅用于 qml 套件时由 run_tests 分平台处理
