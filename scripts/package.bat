@@ -2,12 +2,12 @@
 chcp 65001 >nul
 setlocal
 
-REM Package script: build -> windeployqt -> Inno Setup
+REM Package script: CMake build -> windeployqt -> Inno Setup
 
-set "PROJECT_ROOT=%~dp0..\"
-set "BUILD_DIR=%PROJECT_ROOT%build-release"
-set "DIST_DIR=%PROJECT_ROOT%dist\ImageBrowser"
-set "OUTPUT_DIR=%PROJECT_ROOT%output"
+set "PROJECT_ROOT=%~dp0.."
+set "BUILD_DIR=%PROJECT_ROOT%\build-release"
+set "DIST_DIR=%PROJECT_ROOT%\dist\ImageBrowser"
+set "OUTPUT_DIR=%PROJECT_ROOT%\output"
 
 if "%QT_DIR%"=="" (
     if exist "C:\qt5.15.2\5.15.2\msvc2019_64\bin\qmake.exe" (
@@ -26,9 +26,12 @@ echo [STEP 1/4] Release build...
 call "%~dp0build_release.bat" "%BUILD_DIR%"
 if errorlevel 1 exit /b 1
 
-set "EXE_PATH=%BUILD_DIR%\release\ImageBrowser.exe"
-if not exist "%EXE_PATH%" (
-    echo [ERROR] Executable not found: %EXE_PATH%
+set "EXE_PATH="
+if exist "%BUILD_DIR%\ImageBrowser.exe" set "EXE_PATH=%BUILD_DIR%\ImageBrowser.exe"
+if exist "%BUILD_DIR%\Release\ImageBrowser.exe" set "EXE_PATH=%BUILD_DIR%\Release\ImageBrowser.exe"
+
+if "%EXE_PATH%"=="" (
+    echo [ERROR] Executable not found under %BUILD_DIR%
     exit /b 1
 )
 
