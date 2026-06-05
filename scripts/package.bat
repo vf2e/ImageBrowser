@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-setlocal
+setlocal EnableDelayedExpansion
 
 REM Package script: CMake build -> windeployqt -> Inno Setup
 
@@ -40,12 +40,31 @@ if exist "%DIST_DIR%" rmdir /s /q "%DIST_DIR%"
 mkdir "%DIST_DIR%"
 copy /y "%EXE_PATH%" "%DIST_DIR%\" >nul
 
+set "QML_DIR=%PROJECT_ROOT%\qml"
+if not exist "%QML_DIR%" (
+    echo [ERROR] QML directory not found: %QML_DIR%
+    exit /b 1
+)
+
 echo [STEP 3/4] Deploying Qt dependencies (windeployqt)...
-windeployqt --release --qmldir "%PROJECT_ROOT%qml" "%DIST_DIR%\ImageBrowser.exe"
+windeployqt --release --qmldir "%QML_DIR%" "%DIST_DIR%\ImageBrowser.exe"
 if errorlevel 1 (
     echo [ERROR] windeployqt failed
     exit /b 1
 )
+
+set "DEPLOY_OK=1"
+for %%F in (D3Dcompiler_47.dll Qt5Core.dll Qt5Qml.dll Qt5Quick.dll platforms\qwindows.dll) do (
+    if not exist "%DIST_DIR%\%%F" (
+        echo [ERROR] Missing deployed file: %%F
+        set "DEPLOY_OK=0"
+    )
+)
+if "!DEPLOY_OK!"=="0" (
+    echo [ERROR] windeployqt output incomplete. Check Qt PATH and QML imports.
+    exit /b 1
+)
+echo [OK] Qt runtime deployed to %DIST_DIR%
 
 echo [STEP 4/4] Building installer (Inno Setup)...
 set "ISCC="
@@ -60,7 +79,7 @@ if "%ISCC%"=="" (
 )
 
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
-"%ISCC%" "%PROJECT_ROOT%installer\ImageBrowser.iss"
+"%ISCC%" "%PROJECT_ROOT%\installer\ImageBrowser.iss"
 if errorlevel 1 (
     echo [ERROR] Inno Setup compile failed
     exit /b 1

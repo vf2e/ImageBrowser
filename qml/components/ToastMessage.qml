@@ -4,15 +4,16 @@ import QtGraphicalEffects 1.15
 Rectangle {
     id: toast
     anchors.horizontalCenter: parent.horizontalCenter
-    y: parent.height - height - 100
+    anchors.bottom: parent.bottom
+    anchors.bottomMargin: 72
 
     property string type: "info"
     property alias message: toastLabel.text
 
     visible: opacity > 0
-    width: Math.min(contentRow.width + 60, 500)
-    height: 56
-    radius: 28
+    width: Math.min(toastLabel.implicitWidth + 40, parent ? parent.width - 48 : 500)
+    height: 44
+    radius: 22
 
     gradient: Gradient {
         GradientStop {
@@ -43,9 +44,9 @@ Rectangle {
     layer.enabled: true
     layer.effect: DropShadow {
         transparentBorder: true
-        radius: 25
-        samples: 25
-        verticalOffset: 8
+        radius: 16
+        samples: 17
+        verticalOffset: 4
         color: {
             if (toast.type === "fav") return "#4022C55E"
             if (toast.type === "unfav") return "#40EF4444"
@@ -53,81 +54,40 @@ Rectangle {
         }
     }
 
-    Row {
-        id: contentRow
+    Text {
+        id: toastLabel
         anchors.centerIn: parent
-        spacing: 12
-
-        Item {
-            width: 24
-            height: 24
-            anchors.verticalCenter: parent.verticalCenter
-
-            Text {
-                anchors.centerIn: parent
-                text: {
-                    if (toast.type === "fav") return "✨"
-                    if (toast.type === "unfav") return "🫧"
-                    return "💎"
-                }
-                font.pixelSize: toast.type === "fav" ? 20 : 18
-
-                scale: toast.opacity > 0.8 ? 1.0 : 0.2
-                Behavior on scale {
-                    NumberAnimation { duration: 500; easing.type: Easing.OutBack }
-                }
-            }
+        horizontalAlignment: Text.AlignHCenter
+        color: {
+            if (toast.type === "fav") return "#166534"
+            if (toast.type === "unfav") return "#991B1B"
+            return "#F8FAFC"
         }
-
-        Text {
-            id: toastLabel
-            color: {
-                if (toast.type === "fav") return "#166534"
-                if (toast.type === "unfav") return "#991B1B"
-                return "#F8FAFC"
-            }
-            font {
-                pixelSize: 14
-                weight: Font.Medium
-                family: "Microsoft YaHei"
-            }
-            anchors.verticalCenter: parent.verticalCenter
+        font {
+            pixelSize: 14
+            weight: Font.Medium
+            family: "Microsoft YaHei UI"
         }
+        renderType: Text.NativeRendering
     }
 
     opacity: 0
-    scale: opacity > 0 ? 1.0 : 0.95
 
     Behavior on opacity {
-        NumberAnimation { duration: 300; easing.type: Easing.OutQuad }
-    }
-
-    Behavior on scale {
-        NumberAnimation { duration: 400; easing.type: Easing.OutBack }
-    }
-
-    Behavior on y {
-        NumberAnimation {
-            duration: 500
-            easing.type: Easing.OutExpo
-        }
+        NumberAnimation { duration: 180; easing.type: Easing.OutQuad }
     }
 
     function show(msg, type) {
+        hideTimer.stop()
         toast.message = msg
         toast.type = type || "info"
-
         toast.opacity = 1.0
-        toast.y = parent.height - toast.height - 80
         hideTimer.restart()
     }
 
     Timer {
         id: hideTimer
-        interval: 500
-        onTriggered: {
-            toast.opacity = 0
-            toast.y = parent.height - toast.height - 100
-        }
+        interval: 1800
+        onTriggered: toast.opacity = 0
     }
 }

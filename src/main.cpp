@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
     QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
 #endif
 
-    QFont appFont(QStringLiteral("Microsoft YaHei"));
+    QFont appFont(QStringLiteral("Microsoft YaHei UI"));
     appFont.setStyleStrategy(QFont::PreferAntialias);
     app.setFont(appFont);
 

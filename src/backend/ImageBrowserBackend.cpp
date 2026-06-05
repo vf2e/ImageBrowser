@@ -10,6 +10,12 @@
 
 static const QStringList IMAGE_SUFFIXES = {"*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif", "*.webp"};
 
+// u8 字面量保证中文文案为 UTF-8，避免 MSVC 源文件编码与 tr() 混用导致乱码
+static QString u8msg(const char *text)
+{
+    return QString::fromUtf8(text);
+}
+
 ImageBrowserBackend::ImageBrowserBackend(QObject *parent,
                                          const QString &settingsOrganization,
                                          const QString &settingsApplication)
@@ -49,7 +55,7 @@ void ImageBrowserBackend::selectFolder()
         folder = m_folderPicker();
     } else {
         folder = QFileDialog::getExistingDirectory(nullptr,
-                                                   tr("选择照片文件夹"),
+                                                   u8msg(u8"选择照片文件夹"),
                                                    QStandardPaths::writableLocation(QStandardPaths::PicturesLocation));
     }
     if (folder.isEmpty()) return;
@@ -77,7 +83,7 @@ void ImageBrowserBackend::loadImagesFromFolder(const QString &folder)
         m_recentFolders.removeAll(folder);
         saveRecentFoldersToSettings();
         emit recentFoldersChanged();
-        emit showMessage(tr("文件夹不存在或已被删除"));
+        emit showMessage(u8msg(u8"文件夹不存在或已被删除"));
         return;
     }
 
@@ -167,10 +173,10 @@ void ImageBrowserBackend::toggleFavoriteForCurrent()
     QString fileName = QFileInfo(path).fileName();
     if (m_favorites.contains(path)) {
         m_favorites.remove(path);
-        emit showMessage(QString::fromUtf8(u8"已取消收藏: %1").arg(fileName), QStringLiteral("unfav"));
+        emit showMessage(u8msg(u8"已取消收藏: %1").arg(fileName), QStringLiteral("unfav"));
     } else {
         m_favorites.insert(path);
-        emit showMessage(QString::fromUtf8(u8"已收藏: %1").arg(fileName), QStringLiteral("fav"));
+        emit showMessage(u8msg(u8"已收藏: %1").arg(fileName), QStringLiteral("fav"));
     }
 
     saveFavoritesLog();
@@ -240,18 +246,18 @@ void ImageBrowserBackend::loadFavoritesLog()
 void ImageBrowserBackend::exportFavorites()
 {
     if (m_favorites.isEmpty()) {
-        emit showMessage(tr("没有收藏的照片可导出"));
+        emit showMessage(u8msg(u8"没有收藏的照片可导出"));
         return;
     }
 
     QString destRoot = m_exportDestRoot;
     QString folderName = QFileInfo(m_currentFolder).fileName();
-    if (folderName.isEmpty()) folderName = "未知文件夹";
+    if (folderName.isEmpty()) folderName = u8msg(u8"未知文件夹");
     QString destDir = destRoot + "/" + folderName;
 
     QDir dir;
     if (!dir.mkpath(destDir)) {
-        emit showMessage(tr("无法创建目录: %1").arg(destDir));
+        emit showMessage(u8msg(u8"无法创建目录: %1").arg(destDir));
         return;
     }
 
@@ -277,7 +283,7 @@ void ImageBrowserBackend::exportFavorites()
 
 void ImageBrowserBackend::notifyExportComplete(int successCount, const QString &destDir)
 {
-    emit showMessage(QString::fromUtf8(u8"导出完成，成功复制 %1 张照片到 %2")
+    emit showMessage(u8msg(u8"导出完成，成功复制 %1 张照片到 %2")
                          .arg(successCount)
                          .arg(destDir),
                      QStringLiteral("info"));
