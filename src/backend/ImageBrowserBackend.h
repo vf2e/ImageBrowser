@@ -38,13 +38,16 @@ public slots:
     void toggleFavoriteForCurrent();
     void exportFavorites();
 
+private slots:
+    void notifyExportComplete(int successCount, const QString &destDir);
+
 signals:
     void imagePathsChanged();
     void currentIndexChanged();
     void currentImagePathChanged();
     void totalCountChanged();
     void favoriteCountChanged();
-    void showMessage(const QString &msg);
+    void showMessage(const QString &msg, const QString &type = QStringLiteral("info"));
     void isCurrentFavoriteChanged();
     void recentFoldersChanged();
 
@@ -57,7 +60,6 @@ private:
     void loadImagesFromFolder(const QString &folder);
     void updateCurrentImagePath();
 
-    // 持久化逻辑
     void saveFavoritesLog();
     void loadFavoritesLog();
     void saveProgress();
@@ -65,7 +67,6 @@ private:
 
     QStringList m_recentFolders;
 
-    // 内部读写最近文件夹记录的方法
     void loadRecentFoldersFromSettings();
     void saveRecentFoldersToSettings();
 };
