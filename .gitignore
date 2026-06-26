@@ -5,6 +5,11 @@ dist
 output
 coverage-report
 
+# Aesthetics model (large downloads)
+aesthetics/eat-repo
+aesthetics/venv
+aesthetics/config.json
+
 # CMake
 CMakeCache.txt
 CMakeFiles/

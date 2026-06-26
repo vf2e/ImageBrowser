@@ -6,6 +6,8 @@
 #include <QSet>
 #include <functional>
 
+class AestheticEvaluator;
+
 class ImageBrowserBackend : public QObject
 {
     Q_OBJECT
@@ -16,6 +18,11 @@ class ImageBrowserBackend : public QObject
     Q_PROPERTY(int favoriteCount READ favoriteCount NOTIFY favoriteCountChanged)
     Q_PROPERTY(bool isCurrentFavorite READ isCurrentFavorite NOTIFY isCurrentFavoriteChanged)
     Q_PROPERTY(QStringList recentFolders READ recentFolders NOTIFY recentFoldersChanged)
+    Q_PROPERTY(double aestheticScore READ aestheticScore NOTIFY aestheticScoreChanged)
+    Q_PROPERTY(bool aestheticScoreValid READ aestheticScoreValid NOTIFY aestheticScoreChanged)
+    Q_PROPERTY(bool aestheticEvaluating READ aestheticEvaluating NOTIFY aestheticEvaluatingChanged)
+    Q_PROPERTY(bool aestheticAvailable READ aestheticAvailable NOTIFY aestheticAvailableChanged)
+    Q_PROPERTY(QString aestheticStatusHint READ aestheticStatusHint NOTIFY aestheticStatusHintChanged)
 
 public:
     explicit ImageBrowserBackend(QObject *parent = nullptr,
@@ -31,12 +38,19 @@ public:
     void setCurrentIndex(int index);
     bool isCurrentFavorite() const;
 
+    double aestheticScore() const { return m_aestheticScore; }
+    bool aestheticScoreValid() const { return m_aestheticScoreValid; }
+    bool aestheticEvaluating() const { return m_aestheticEvaluating; }
+    bool aestheticAvailable() const { return m_aestheticAvailable; }
+    QString aestheticStatusHint() const { return m_aestheticStatusHint; }
+
     QStringList recentFolders() const { return m_recentFolders; }
     Q_INVOKABLE void loadFolder(const QString &folderPath);
 
     void setSettingsScope(const QString &organization, const QString &application);
     void setExportDestRoot(const QString &root);
     void setFolderPicker(const std::function<QString()> &picker);
+    void setAestheticMockScorer(const std::function<double(const QString &)> &scorer);
 
 public slots:
     void selectFolder();
@@ -47,6 +61,10 @@ public slots:
 
 private slots:
     void notifyExportComplete(int successCount, const QString &destDir);
+    void onAestheticScoreReady(const QString &imagePath, double score);
+    void onAestheticScoreFailed(const QString &imagePath, const QString &reason);
+    void onAestheticAvailabilityChanged(bool available);
+    void onAestheticBusyChanged(bool busy);
 
 signals:
     void imagePathsChanged();
@@ -57,6 +75,10 @@ signals:
     void showMessage(const QString &msg, const QString &type = QStringLiteral("info"));
     void isCurrentFavoriteChanged();
     void recentFoldersChanged();
+    void aestheticScoreChanged();
+    void aestheticEvaluatingChanged();
+    void aestheticAvailableChanged();
+    void aestheticStatusHintChanged();
 
 private:
     QStringList m_imagePaths;
@@ -81,6 +103,16 @@ private:
 
     void loadRecentFoldersFromSettings();
     void saveRecentFoldersToSettings();
+    void requestAestheticScore();
+    void resetAestheticState();
+    void setAestheticEvaluating(bool evaluating);
+
+    AestheticEvaluator *m_aestheticEvaluator = nullptr;
+    double m_aestheticScore = 0.0;
+    bool m_aestheticScoreValid = false;
+    bool m_aestheticEvaluating = false;
+    bool m_aestheticAvailable = false;
+    QString m_aestheticStatusHint;
 };
 
 #endif // IMAGEBROWSERBACKEND_H

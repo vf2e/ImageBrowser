@@ -87,6 +87,9 @@ private slots:
 
     // --- 集成工作流 ---
     void workflow_loadNavigateFavoriteAndExport();
+
+    // --- 美学评分 ---
+    void aesthetic_mockScorer_returnsScoreForCurrentImage();
 };
 
 void TestImageBrowserBackend::initTestCase()
@@ -811,6 +814,23 @@ void TestImageBrowserBackend::workflow_loadNavigateFavoriteAndExport()
     QCOMPARE(backend->favoriteCount(), 2);
     QVERIFY(backend->currentImagePath().endsWith(QStringLiteral("02.jpg"))
            || backend->currentImagePath().endsWith(QStringLiteral("03.jpg")));
+}
+
+void TestImageBrowserBackend::aesthetic_mockScorer_returnsScoreForCurrentImage()
+{
+    TestFixture fixture;
+    const QString folder = fixture.createFolder(QStringLiteral("aesthetic"));
+    fixture.createImageFile(folder, QStringLiteral("photo.jpg"), QByteArray("img"));
+
+    ImageBrowserBackend *backend = fixture.backend();
+    backend->setAestheticMockScorer([](const QString &path) -> double {
+        return path.contains(QStringLiteral("photo.jpg")) ? 8.25 : 0.0;
+    });
+
+    backend->loadFolder(folder);
+    QCOMPARE(backend->aestheticScoreValid(), true);
+    QCOMPARE(backend->aestheticScore(), 8.25);
+    QCOMPARE(backend->aestheticEvaluating(), false);
 }
 
 QTEST_MAIN(TestImageBrowserBackend)

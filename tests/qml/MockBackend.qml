@@ -8,6 +8,9 @@ QtObject {
     property string currentImagePath: ""
     property var recentFolders: []
     property bool isCurrentFavorite: false
+    property double aestheticScore: 0
+    property bool aestheticScoreValid: false
+    property bool aestheticEvaluating: false
 
     function loadFolder(path) {
         recentFolders = [path].concat(recentFolders.filter(function(item) { return item !== path }))

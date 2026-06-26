@@ -14,10 +14,12 @@ find_package(Qt5 5.15 REQUIRED COMPONENTS Core Quick Widgets Concurrent)
 set(IMAGEBROWSER_SOURCES
     src/main.cpp
     src/backend/ImageBrowserBackend.cpp
+    src/backend/AestheticEvaluator.cpp
 )
 
 set(IMAGEBROWSER_HEADERS
     src/backend/ImageBrowserBackend.h
+    src/backend/AestheticEvaluator.h
 )
 
 set(IMAGEBROWSER_RESOURCES

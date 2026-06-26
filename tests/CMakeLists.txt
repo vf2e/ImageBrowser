@@ -5,6 +5,8 @@ add_executable(tst_imagebrowserbackend
     tst_imagebrowserbackend.cpp
     ../src/backend/ImageBrowserBackend.cpp
     ../src/backend/ImageBrowserBackend.h
+    ../src/backend/AestheticEvaluator.cpp
+    ../src/backend/AestheticEvaluator.h
 )
 
 target_include_directories(tst_imagebrowserbackend PRIVATE
@@ -85,6 +87,8 @@ add_executable(tst_keyboard_integration
     tst_keyboard_integration.cpp
     ../src/backend/ImageBrowserBackend.cpp
     ../src/backend/ImageBrowserBackend.h
+    ../src/backend/AestheticEvaluator.cpp
+    ../src/backend/AestheticEvaluator.h
 )
 
 target_include_directories(tst_keyboard_integration PRIVATE

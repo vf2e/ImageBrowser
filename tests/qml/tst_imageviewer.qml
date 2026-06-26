@@ -45,4 +45,24 @@ TestCase {
         compare(viewer.imageCount, 0)
         compare(viewer.imageCount > 0, false)
     }
+
+    function test_aesthetic_badge_shows_score() {
+        var mock = createTemporaryObject(
+            Qt.createComponent(Qt.resolvedUrl("MockBackend.qml")),
+            root,
+            {
+                totalCount: 1,
+                currentImagePath: "C:/photos/sample.jpg",
+                aestheticScore: 7.86,
+                aestheticScoreValid: true,
+                aestheticEvaluating: false
+            })
+        var viewer = createTemporaryObject(
+            Qt.createComponent(Qt.resolvedUrl("../../qml/components/ImageViewer.qml")),
+            root,
+            { controller: mock, width: 400, height: 300 })
+        tryCompare(viewer, "imageCount", 1, 3000)
+        compare(mock.aestheticScoreValid, true)
+        compare(mock.aestheticScore.toFixed(2), "7.86")
+    }
 }

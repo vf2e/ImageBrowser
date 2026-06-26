@@ -1,0 +1,8 @@
+torch
+torchvision
+yacs
+PyYAML
+pillow
+numpy
+timm
+einops

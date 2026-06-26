@@ -1,5 +1,6 @@
 import QtQuick 2.15
 import QtGraphicalEffects 1.15
+import QtQuick.Controls 2.15
 
 Rectangle {
     id: imageContainer
@@ -8,6 +9,10 @@ Rectangle {
     readonly property int imageCount: controller ? controller.totalCount : 0
     readonly property string imagePath: controller ? controller.currentImagePath : ""
     readonly property bool currentFavorite: controller ? controller.isCurrentFavorite : false
+    readonly property real aestheticScore: controller ? controller.aestheticScore : 0
+    readonly property bool aestheticScoreValid: controller ? controller.aestheticScoreValid : false
+    readonly property bool aestheticEvaluating: controller ? controller.aestheticEvaluating : false
+    readonly property string aestheticStatusHint: controller ? controller.aestheticStatusHint : ""
 
     anchors.fill: parent
     anchors.topMargin: imageCount > 0 ? 88 : 16
@@ -83,6 +88,56 @@ Rectangle {
                 oldImage.source = newImage.source
             }
             newImage.source = currentSrc
+        }
+
+        Rectangle {
+            id: aestheticBadge
+            anchors { top: parent.top; left: parent.left; margins: 24 }
+            height: 36
+            width: aestheticLabel.implicitWidth + 24
+            radius: 18
+            color: "#CC1A1A1F"
+            border.width: 1
+            visible: imageCount > 0
+            opacity: visible ? 1.0 : 0.0
+            border.color: {
+                if (!aestheticScoreValid) return "#334155"
+                if (aestheticScore >= 7.0) return "#6686EFAC"
+                if (aestheticScore >= 5.0) return "#66FBBF24"
+                return "#66FCA5A5"
+            }
+
+            Behavior on opacity {
+                NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
+            }
+
+            ToolTip.visible: badgeHover.containsMouse && aestheticStatusHint.length > 0 && !aestheticScoreValid
+            ToolTip.text: aestheticStatusHint
+            ToolTip.delay: 300
+
+            MouseArea {
+                id: badgeHover
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.NoButton
+            }
+
+            Text {
+                id: aestheticLabel
+                anchors.centerIn: parent
+                color: aestheticScoreValid ? "#F8FAFC" : "#94A3B8"
+                font {
+                    pixelSize: 13
+                    weight: Font.Medium
+                    family: "Microsoft YaHei UI"
+                }
+                text: {
+                    if (aestheticEvaluating) return "评分中..."
+                    if (aestheticScoreValid) return "美学 " + aestheticScore.toFixed(2)
+                    if (aestheticStatusHint.length > 0) return "美学 未就绪"
+                    return "美学 --"
+                }
+            }
         }
 
         Rectangle {

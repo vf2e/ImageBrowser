@@ -1,4 +1,7 @@
 #include "ImageBrowserBackend.h"
+#include "AestheticEvaluator.h"
+
+#include <QFileInfo>
 #include <QFileDialog>
 #include <QDir>
 #include <QStandardPaths>
@@ -16,6 +19,13 @@ static QString u8msg(const char *text)
     return QString::fromUtf8(text);
 }
 
+static bool sameImagePath(const QString &left, const QString &right)
+{
+    if (left.isEmpty() || right.isEmpty())
+        return left == right;
+    return QDir::fromNativeSeparators(left).compare(QDir::fromNativeSeparators(right), Qt::CaseInsensitive) == 0;
+}
+
 ImageBrowserBackend::ImageBrowserBackend(QObject *parent,
                                          const QString &settingsOrganization,
                                          const QString &settingsApplication)
@@ -23,6 +33,18 @@ ImageBrowserBackend::ImageBrowserBackend(QObject *parent,
     , m_settingsOrganization(settingsOrganization)
     , m_settingsApplication(settingsApplication)
 {
+    m_aestheticEvaluator = new AestheticEvaluator(this);
+    connect(m_aestheticEvaluator, &AestheticEvaluator::scoreReady,
+            this, &ImageBrowserBackend::onAestheticScoreReady);
+    connect(m_aestheticEvaluator, &AestheticEvaluator::scoreFailed,
+            this, &ImageBrowserBackend::onAestheticScoreFailed);
+    connect(m_aestheticEvaluator, &AestheticEvaluator::availabilityChanged,
+            this, &ImageBrowserBackend::onAestheticAvailabilityChanged);
+    connect(m_aestheticEvaluator, &AestheticEvaluator::busyChanged,
+            this, &ImageBrowserBackend::onAestheticBusyChanged);
+    m_aestheticAvailable = m_aestheticEvaluator->isAvailable();
+    m_aestheticStatusHint = m_aestheticEvaluator->statusHint();
+
     loadRecentFoldersFromSettings();
 }
 
@@ -46,6 +68,13 @@ void ImageBrowserBackend::setExportDestRoot(const QString &root)
 void ImageBrowserBackend::setFolderPicker(const std::function<QString()> &picker)
 {
     m_folderPicker = picker;
+}
+
+void ImageBrowserBackend::setAestheticMockScorer(const std::function<double(const QString &)> &scorer)
+{
+    if (m_aestheticEvaluator)
+        m_aestheticEvaluator->setMockScorer(scorer);
+    onAestheticAvailabilityChanged(m_aestheticEvaluator && m_aestheticEvaluator->isAvailable());
 }
 
 void ImageBrowserBackend::selectFolder()
@@ -142,6 +171,94 @@ void ImageBrowserBackend::updateCurrentImagePath()
     emit currentImagePathChanged();
     emit isCurrentFavoriteChanged();
     emit currentIndexChanged();
+    requestAestheticScore();
+}
+
+void ImageBrowserBackend::resetAestheticState()
+{
+    m_aestheticScore = 0.0;
+    m_aestheticScoreValid = false;
+    setAestheticEvaluating(false);
+    emit aestheticScoreChanged();
+}
+
+void ImageBrowserBackend::setAestheticEvaluating(bool evaluating)
+{
+    if (m_aestheticEvaluating == evaluating)
+        return;
+    m_aestheticEvaluating = evaluating;
+    emit aestheticEvaluatingChanged();
+}
+
+void ImageBrowserBackend::requestAestheticScore()
+{
+    const QString path = currentImagePath();
+    if (path.isEmpty() || !m_aestheticEvaluator) {
+        resetAestheticState();
+        return;
+    }
+
+    if (m_aestheticEvaluator->hasCachedScore(path)) {
+        m_aestheticScore = m_aestheticEvaluator->cachedScore(path);
+        m_aestheticScoreValid = true;
+        setAestheticEvaluating(false);
+        emit aestheticScoreChanged();
+        return;
+    }
+
+    m_aestheticScoreValid = false;
+    emit aestheticScoreChanged();
+    setAestheticEvaluating(true);
+    m_aestheticEvaluator->requestScore(path);
+}
+
+void ImageBrowserBackend::onAestheticScoreReady(const QString &imagePath, double score)
+{
+    if (!sameImagePath(imagePath, currentImagePath()))
+        return;
+
+    m_aestheticScore = score;
+    m_aestheticScoreValid = true;
+    m_aestheticStatusHint.clear();
+    setAestheticEvaluating(false);
+    emit aestheticScoreChanged();
+    emit aestheticStatusHintChanged();
+}
+
+void ImageBrowserBackend::onAestheticScoreFailed(const QString &imagePath, const QString &reason)
+{
+    if (!sameImagePath(imagePath, currentImagePath()))
+        return;
+
+    if (!reason.isEmpty() && m_aestheticStatusHint != reason) {
+        m_aestheticStatusHint = reason;
+        emit aestheticStatusHintChanged();
+    }
+
+    m_aestheticScoreValid = false;
+    setAestheticEvaluating(false);
+    emit aestheticScoreChanged();
+}
+
+void ImageBrowserBackend::onAestheticAvailabilityChanged(bool available)
+{
+    const QString hint = m_aestheticEvaluator ? m_aestheticEvaluator->statusHint() : QString();
+    if (m_aestheticStatusHint != hint) {
+        m_aestheticStatusHint = hint;
+        emit aestheticStatusHintChanged();
+    }
+
+    if (m_aestheticAvailable == available)
+        return;
+    m_aestheticAvailable = available;
+    emit aestheticAvailableChanged();
+}
+
+void ImageBrowserBackend::onAestheticBusyChanged(bool busy)
+{
+    if (currentImagePath().isEmpty())
+        return;
+    setAestheticEvaluating(busy);
 }
 
 void ImageBrowserBackend::setCurrentIndex(int index)
