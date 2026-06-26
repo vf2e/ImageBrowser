@@ -2,13 +2,7 @@
 chcp 65001 >nul
 setlocal EnableDelayedExpansion
 
-REM 一键打包：Release 构建 -> windeployqt 部署 -> 便携目录 / ZIP / Inno Setup 安装包
-REM
-REM 可选环境变量：
-REM   QT_DIR           Qt 安装目录
-REM   SKIP_BUILD=1     跳过编译，仅重新部署/打包
-REM   SKIP_INSTALLER=1 不生成 Setup.exe（仍会生成 dist 与 ZIP）
-REM   SKIP_ZIP=1       不生成便携 ZIP
+REM 可选环境变量: QT_DIR, SKIP_BUILD=1, SKIP_INSTALLER=1, SKIP_ZIP=1, INCLUDE_VENV=1
 
 set "PROJECT_ROOT=%~dp0.."
 set "BUILD_DIR=%PROJECT_ROOT%\build-release"
@@ -94,13 +88,22 @@ if exist "%PROJECT_ROOT%\aesthetics\eat_server.py" (
     if exist "%PROJECT_ROOT%\aesthetics\config.json.example" (
         copy /y "%PROJECT_ROOT%\aesthetics\config.json.example" "%DIST_DIR%\aesthetics\" >nul
     )
+    if exist "%PROJECT_ROOT%\scripts\setup_aesthetics.bat" (
+        copy /y "%PROJECT_ROOT%\scripts\setup_aesthetics.bat" "%DIST_DIR%\aesthetics\setup_aesthetics.bat" >nul
+    )
     if not exist "%DIST_DIR%\aesthetics\weights" mkdir "%DIST_DIR%\aesthetics\weights"
     for %%W in ("%PROJECT_ROOT%\aesthetics\weights\*.pth") do (
         if exist "%%~fW" copy /y "%%~fW" "%DIST_DIR%\aesthetics\weights\" >nul
     )
-    if exist "%PROJECT_ROOT%\aesthetics\venv" (
-        echo [INFO] 复制 Python 虚拟环境 ^(体积较大^)...
-        xcopy /E /I /Y /Q "%PROJECT_ROOT%\aesthetics\venv" "%DIST_DIR%\aesthetics\venv" >nul
+    if "%INCLUDE_VENV%"=="1" (
+        if exist "%PROJECT_ROOT%\aesthetics\venv" (
+            echo [INFO] 复制 Python 虚拟环境 - 体积较大，请耐心等待...
+            xcopy /E /I /Y /Q "%PROJECT_ROOT%\aesthetics\venv" "%DIST_DIR%\aesthetics\venv" >nul
+        ) else (
+            echo [WARN] INCLUDE_VENV=1 但未找到 aesthetics\venv
+        )
+    ) else (
+        echo [INFO] 未包含 venv，目标机器可运行 aesthetics\setup_aesthetics.bat
     )
     if exist "%PROJECT_ROOT%\aesthetics\eat-repo" (
         echo [INFO] 复制 EAT 模型代码...
@@ -115,14 +118,19 @@ if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 
 if not "%SKIP_ZIP%"=="1" (
     set "ZIP_PATH=%OUTPUT_DIR%\ImageBrowser_v%APP_VERSION%_portable.zip"
+    set "ZIP_STAGE=%TEMP%\ImageBrowser_zip_%RANDOM%"
     echo [INFO] 生成便携 ZIP...
     if exist "!ZIP_PATH!" del /f /q "!ZIP_PATH!"
-    powershell -NoProfile -Command "Compress-Archive -Path '%DIST_DIR%\*' -DestinationPath '!ZIP_PATH!' -Force"
+    if exist "!ZIP_STAGE!" rmdir /s /q "!ZIP_STAGE!"
+    mkdir "!ZIP_STAGE!"
+    robocopy "%DIST_DIR%" "!ZIP_STAGE!" /E /XD venv __pycache__ .git /NFL /NDL /NJH /NJS /NC /NS /NP >nul
+    powershell -NoProfile -Command "Compress-Archive -LiteralPath '!ZIP_STAGE!\*' -DestinationPath '!ZIP_PATH!' -Force"
     if errorlevel 1 (
         echo [WARN] ZIP 生成失败
     ) else (
         echo [OK] 便携包: !ZIP_PATH!
     )
+    if exist "!ZIP_STAGE!" rmdir /s /q "!ZIP_STAGE!"
 )
 
 echo [STEP 5/5] 生成安装包 ^(Inno Setup^)...

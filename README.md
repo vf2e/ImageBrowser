@@ -93,6 +93,7 @@ ImageBrowser/
 │   ├── generate_test_report.bat # 构建 + 测试 + HTML 报告
 │   ├── run_coverage.bat        # C++ 覆盖率（OpenCppCoverage）
 │   └── package.bat             # 一键打包（构建 + 部署 + 安装包）
+├── pack.bat                    # 根目录快捷入口
 ├── CMakeLists.txt
 └── qml.qrc
 ```
@@ -229,6 +230,7 @@ pack.bat
 set SKIP_BUILD=1       REM 跳过编译，仅重新部署/打包
 set SKIP_INSTALLER=1   REM 不生成 Setup.exe
 set SKIP_ZIP=1         REM 不生成便携 ZIP
+set INCLUDE_VENV=1     REM 将 aesthetics\venv 一并打入 dist（体积很大）
 set QT_DIR=C:\qt5.15.2\5.15.2\msvc2019_64
 pack.bat
 ```
