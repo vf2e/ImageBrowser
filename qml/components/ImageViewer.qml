@@ -246,6 +246,7 @@ Rectangle {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onWheel: (wheel) => {
+                if (controller && controller.assistantPanelOpen) return
                 if (!controller) return
                 if (wheel.angleDelta.y > 0) controller.previousImage()
                 else controller.nextImage()

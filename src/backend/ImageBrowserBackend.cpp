@@ -1,6 +1,7 @@
 #include "ImageBrowserBackend.h"
 #include "AestheticEvaluator.h"
 #include "CritiqueEvaluator.h"
+#include "AssistantEvaluator.h"
 
 #include <QFileInfo>
 #include <QFileDialog>
@@ -11,6 +12,7 @@
 #include <QtConcurrent>
 #include <QSettings>
 #include <QTextStream>
+#include <QVariantMap>
 
 static const QStringList IMAGE_SUFFIXES = {"*.jpg", "*.jpeg", "*.png", "*.bmp", "*.gif", "*.webp"};
 
@@ -54,6 +56,16 @@ ImageBrowserBackend::ImageBrowserBackend(QObject *parent,
     connect(m_critiqueEvaluator, &CritiqueEvaluator::busyChanged,
             this, &ImageBrowserBackend::onCritiqueBusyChanged);
 
+    m_assistantEvaluator = new AssistantEvaluator(this);
+    connect(m_assistantEvaluator, &AssistantEvaluator::replyReady,
+            this, &ImageBrowserBackend::onAssistantReplyReady);
+    connect(m_assistantEvaluator, &AssistantEvaluator::replyFailed,
+            this, &ImageBrowserBackend::onAssistantReplyFailed);
+    connect(m_assistantEvaluator, &AssistantEvaluator::busyChanged,
+            this, &ImageBrowserBackend::onAssistantBusyChanged);
+    connect(m_assistantEvaluator, &AssistantEvaluator::welcomeMessageChanged,
+            this, &ImageBrowserBackend::onAssistantWelcomeMessageChanged);
+
     loadRecentFoldersFromSettings();
 }
 
@@ -90,6 +102,13 @@ void ImageBrowserBackend::setCritiqueMockGenerator(const std::function<QString(c
 {
     if (m_critiqueEvaluator)
         m_critiqueEvaluator->setMockGenerator(generator);
+}
+
+void ImageBrowserBackend::setAssistantMockResponder(
+    const std::function<QString(const QString &, const QVariantList &)> &responder)
+{
+    if (m_assistantEvaluator)
+        m_assistantEvaluator->setMockResponder(responder);
 }
 
 void ImageBrowserBackend::selectFolder()
@@ -396,6 +415,112 @@ void ImageBrowserBackend::setCritiquePanelOpen(bool open)
 void ImageBrowserBackend::openCritiquePanel()
 {
     setCritiquePanelOpen(true);
+}
+
+void ImageBrowserBackend::appendAssistantMessage(const QString &role, const QString &text)
+{
+    if (text.isEmpty())
+        return;
+    QVariantMap entry;
+    entry.insert(QStringLiteral("role"), role);
+    entry.insert(QStringLiteral("text"), text);
+    m_assistantMessages.append(entry);
+    emit assistantMessagesChanged();
+}
+
+void ImageBrowserBackend::ensureAssistantWelcome()
+{
+    if (!m_assistantMessages.isEmpty())
+        return;
+    const QString welcome = m_assistantEvaluator
+                                ? m_assistantEvaluator->welcomeMessage()
+                                : QString();
+    if (!welcome.isEmpty()) {
+        appendAssistantMessage(QStringLiteral("assistant"), welcome);
+        return;
+    }
+    appendAssistantMessage(QStringLiteral("assistant"),
+                           u8msg(u8"你好，我是 ImageBrowser 小助理。可以问我快捷键、收藏导出、"
+                                 u8"美学评分、AI 点评、安装构建等问题。"));
+}
+
+void ImageBrowserBackend::setAssistantPanelOpen(bool open)
+{
+    if (m_assistantPanelOpen == open)
+        return;
+    m_assistantPanelOpen = open;
+    emit assistantPanelOpenChanged();
+    if (open)
+        ensureAssistantWelcome();
+}
+
+void ImageBrowserBackend::openAssistantPanel()
+{
+    setAssistantPanelOpen(true);
+}
+
+void ImageBrowserBackend::clearAssistantChat()
+{
+    if (m_assistantMessages.isEmpty())
+        return;
+    m_assistantMessages.clear();
+    emit assistantMessagesChanged();
+    ensureAssistantWelcome();
+}
+
+void ImageBrowserBackend::sendAssistantMessage(const QString &text)
+{
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty() || !m_assistantEvaluator)
+        return;
+
+    appendAssistantMessage(QStringLiteral("user"), trimmed);
+    setAssistantBusy(true);
+    m_assistantStatusHint.clear();
+    emit assistantStatusHintChanged();
+
+    QVariantList history = m_assistantMessages;
+    m_assistantEvaluator->sendMessage(trimmed, history);
+}
+
+void ImageBrowserBackend::setAssistantBusy(bool busy)
+{
+    if (m_assistantBusy == busy)
+        return;
+    m_assistantBusy = busy;
+    emit assistantBusyChanged();
+}
+
+void ImageBrowserBackend::onAssistantReplyReady(const QString &reply)
+{
+    setAssistantBusy(false);
+    m_assistantStatusHint.clear();
+    emit assistantStatusHintChanged();
+    appendAssistantMessage(QStringLiteral("assistant"), reply);
+}
+
+void ImageBrowserBackend::onAssistantReplyFailed(const QString &reason)
+{
+    setAssistantBusy(false);
+    if (!reason.isEmpty() && m_assistantStatusHint != reason) {
+        m_assistantStatusHint = reason;
+        emit assistantStatusHintChanged();
+    }
+    appendAssistantMessage(QStringLiteral("assistant"),
+                           reason.isEmpty()
+                               ? u8msg(u8"小助理暂时无法回答，请稍后再试。")
+                               : reason);
+}
+
+void ImageBrowserBackend::onAssistantBusyChanged(bool busy)
+{
+    setAssistantBusy(busy);
+}
+
+void ImageBrowserBackend::onAssistantWelcomeMessageChanged()
+{
+    if (m_assistantPanelOpen && m_assistantMessages.isEmpty())
+        ensureAssistantWelcome();
 }
 
 void ImageBrowserBackend::setCurrentIndex(int index)

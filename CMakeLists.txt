@@ -16,12 +16,14 @@ set(IMAGEBROWSER_SOURCES
     src/backend/ImageBrowserBackend.cpp
     src/backend/AestheticEvaluator.cpp
     src/backend/CritiqueEvaluator.cpp
+    src/backend/AssistantEvaluator.cpp
 )
 
 set(IMAGEBROWSER_HEADERS
     src/backend/ImageBrowserBackend.h
     src/backend/AestheticEvaluator.h
     src/backend/CritiqueEvaluator.h
+    src/backend/AssistantEvaluator.h
 )
 
 set(IMAGEBROWSER_RESOURCES

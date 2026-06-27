@@ -9,6 +9,8 @@
         <file>qml/components/RecentFolderPopup.qml</file>
         <file>qml/components/ToastMessage.qml</file>
         <file>qml/components/CritiquePanel.qml</file>
+        <file>qml/components/AssistantPanel.qml</file>
+        <file>qml/components/AssistantFab.qml</file>
         <file>assets/icons/logo.ico</file>
     </qresource>
 </RCC>

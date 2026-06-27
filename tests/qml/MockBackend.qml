@@ -15,9 +15,16 @@ QtObject {
     property bool critiqueValid: false
     property bool critiqueEvaluating: false
     property bool critiquePanelOpen: false
+    property var assistantMessages: []
+    property bool assistantPanelOpen: false
+    property bool assistantBusy: false
+    property string assistantStatusHint: ""
 
     function requestCritique() {}
     function openCritiquePanel() { critiquePanelOpen = true }
+    function sendAssistantMessage(text) {}
+    function clearAssistantChat() { assistantMessages = [] }
+    function openAssistantPanel() { assistantPanelOpen = true }
 
     function loadFolder(path) {
         recentFolders = [path].concat(recentFolders.filter(function(item) { return item !== path }))

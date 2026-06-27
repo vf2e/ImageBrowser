@@ -28,6 +28,7 @@ ApplicationWindow {
 
         Keys.onPressed: (event) => {
             if (!backend) return
+            if (backend.assistantPanelOpen) return
             switch (event.key) {
                 case Qt.Key_Left: backend.previousImage(); break
                 case Qt.Key_Right: backend.nextImage(); break
@@ -39,7 +40,12 @@ ApplicationWindow {
             event.accepted = true
         }
 
-        onActiveFocusChanged: { if (!activeFocus) forceActiveFocus() }
+        onActiveFocusChanged: {
+            if (activeFocus) return
+            if (backend && backend.assistantPanelOpen) return
+            if (backend && backend.critiquePanelOpen) return
+            forceActiveFocus()
+        }
 
         ImageViewer {
             controller: backend
@@ -73,6 +79,14 @@ ApplicationWindow {
 
     CritiquePanel {
         z: 500
+        controller: backend
+    }
+
+    AssistantPanel {
+        controller: backend
+    }
+
+    AssistantFab {
         controller: backend
     }
 

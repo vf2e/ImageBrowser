@@ -4,10 +4,12 @@
 #include <QObject>
 #include <QStringList>
 #include <QSet>
+#include <QVariantList>
 #include <functional>
 
 class AestheticEvaluator;
 class CritiqueEvaluator;
+class AssistantEvaluator;
 
 class ImageBrowserBackend : public QObject
 {
@@ -31,6 +33,10 @@ class ImageBrowserBackend : public QObject
     Q_PROPERTY(bool critiqueEvaluating READ critiqueEvaluating NOTIFY critiqueEvaluatingChanged)
     Q_PROPERTY(QString critiqueStatusHint READ critiqueStatusHint NOTIFY critiqueStatusHintChanged)
     Q_PROPERTY(bool critiquePanelOpen READ critiquePanelOpen WRITE setCritiquePanelOpen NOTIFY critiquePanelOpenChanged)
+    Q_PROPERTY(QVariantList assistantMessages READ assistantMessages NOTIFY assistantMessagesChanged)
+    Q_PROPERTY(bool assistantPanelOpen READ assistantPanelOpen WRITE setAssistantPanelOpen NOTIFY assistantPanelOpenChanged)
+    Q_PROPERTY(bool assistantBusy READ assistantBusy NOTIFY assistantBusyChanged)
+    Q_PROPERTY(QString assistantStatusHint READ assistantStatusHint NOTIFY assistantStatusHintChanged)
 
 public:
     explicit ImageBrowserBackend(QObject *parent = nullptr,
@@ -59,6 +65,11 @@ public:
     QString critiqueStatusHint() const { return m_critiqueStatusHint; }
     bool critiquePanelOpen() const { return m_critiquePanelOpen; }
     void setCritiquePanelOpen(bool open);
+    QVariantList assistantMessages() const { return m_assistantMessages; }
+    bool assistantPanelOpen() const { return m_assistantPanelOpen; }
+    void setAssistantPanelOpen(bool open);
+    bool assistantBusy() const { return m_assistantBusy; }
+    QString assistantStatusHint() const { return m_assistantStatusHint; }
 
     QStringList recentFolders() const { return m_recentFolders; }
     Q_INVOKABLE void loadFolder(const QString &folderPath);
@@ -68,9 +79,13 @@ public:
     void setFolderPicker(const std::function<QString()> &picker);
     void setAestheticMockScorer(const std::function<double(const QString &)> &scorer);
     void setCritiqueMockGenerator(const std::function<QString(const QString &)> &generator);
+    void setAssistantMockResponder(const std::function<QString(const QString &, const QVariantList &)> &responder);
 
     Q_INVOKABLE void requestCritique();
     Q_INVOKABLE void openCritiquePanel();
+    Q_INVOKABLE void sendAssistantMessage(const QString &text);
+    Q_INVOKABLE void clearAssistantChat();
+    Q_INVOKABLE void openAssistantPanel();
 
 public slots:
     void selectFolder();
@@ -88,6 +103,10 @@ private slots:
     void onCritiqueReady(const QString &imagePath, const QString &text, double qsitScore);
     void onCritiqueFailed(const QString &imagePath, const QString &reason);
     void onCritiqueBusyChanged(bool busy);
+    void onAssistantReplyReady(const QString &reply);
+    void onAssistantReplyFailed(const QString &reason);
+    void onAssistantBusyChanged(bool busy);
+    void onAssistantWelcomeMessageChanged();
 
 signals:
     void imagePathsChanged();
@@ -106,6 +125,10 @@ signals:
     void critiqueEvaluatingChanged();
     void critiqueStatusHintChanged();
     void critiquePanelOpenChanged();
+    void assistantMessagesChanged();
+    void assistantPanelOpenChanged();
+    void assistantBusyChanged();
+    void assistantStatusHintChanged();
 
 private:
     QStringList m_imagePaths;
@@ -135,9 +158,13 @@ private:
     void setAestheticEvaluating(bool evaluating);
     void syncCritiqueForCurrentImage();
     void setCritiqueEvaluating(bool evaluating);
+    void setAssistantBusy(bool busy);
+    void appendAssistantMessage(const QString &role, const QString &text);
+    void ensureAssistantWelcome();
 
     AestheticEvaluator *m_aestheticEvaluator = nullptr;
     CritiqueEvaluator *m_critiqueEvaluator = nullptr;
+    AssistantEvaluator *m_assistantEvaluator = nullptr;
     double m_aestheticScore = 0.0;
     bool m_aestheticScoreValid = false;
     bool m_aestheticEvaluating = false;
@@ -150,6 +177,10 @@ private:
     bool m_critiqueEvaluating = false;
     QString m_critiqueStatusHint;
     bool m_critiquePanelOpen = false;
+    QVariantList m_assistantMessages;
+    bool m_assistantPanelOpen = false;
+    bool m_assistantBusy = false;
+    QString m_assistantStatusHint;
 };
 
 #endif // IMAGEBROWSERBACKEND_H

@@ -91,6 +91,7 @@ private slots:
     // --- 美学评分 ---
     void aesthetic_mockScorer_returnsScoreForCurrentImage();
     void critique_mockGenerator_returnsTextForCurrentImage();
+    void assistant_mockResponder_returnsReplyForMessage();
 };
 
 void TestImageBrowserBackend::initTestCase()
@@ -852,6 +853,26 @@ void TestImageBrowserBackend::critique_mockGenerator_returnsTextForCurrentImage(
     QCOMPARE(backend->critiqueValid(), true);
     QCOMPARE(backend->critiqueText(), QStringLiteral("构图均衡，光影层次较好。"));
     QCOMPARE(backend->critiqueEvaluating(), false);
+}
+
+void TestImageBrowserBackend::assistant_mockResponder_returnsReplyForMessage()
+{
+    TestFixture fixture;
+    ImageBrowserBackend *backend = fixture.backend();
+    backend->setAssistantMockResponder([](const QString &msg, const QVariantList &) -> QString {
+        return QStringLiteral("收到：") + msg;
+    });
+
+    backend->openAssistantPanel();
+    QCOMPARE(backend->assistantPanelOpen(), true);
+    QVERIFY(backend->assistantMessages().size() >= 1);
+
+    backend->sendAssistantMessage(QStringLiteral("快捷键有哪些？"));
+    QCOMPARE(backend->assistantBusy(), false);
+    QCOMPARE(backend->assistantMessages().size(), 3);
+    const QVariantMap last = backend->assistantMessages().last().toMap();
+    QCOMPARE(last.value(QStringLiteral("role")).toString(), QStringLiteral("assistant"));
+    QCOMPARE(last.value(QStringLiteral("text")).toString(), QStringLiteral("收到：快捷键有哪些？"));
 }
 
 QTEST_MAIN(TestImageBrowserBackend)

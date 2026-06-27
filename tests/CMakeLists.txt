@@ -9,6 +9,8 @@ add_executable(tst_imagebrowserbackend
     ../src/backend/AestheticEvaluator.h
     ../src/backend/CritiqueEvaluator.cpp
     ../src/backend/CritiqueEvaluator.h
+    ../src/backend/AssistantEvaluator.cpp
+    ../src/backend/AssistantEvaluator.h
 )
 
 target_include_directories(tst_imagebrowserbackend PRIVATE
@@ -93,6 +95,8 @@ add_executable(tst_keyboard_integration
     ../src/backend/AestheticEvaluator.h
     ../src/backend/CritiqueEvaluator.cpp
     ../src/backend/CritiqueEvaluator.h
+    ../src/backend/AssistantEvaluator.cpp
+    ../src/backend/AssistantEvaluator.h
 )
 
 target_include_directories(tst_keyboard_integration PRIVATE
