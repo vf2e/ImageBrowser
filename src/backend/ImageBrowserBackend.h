@@ -7,6 +7,7 @@
 #include <functional>
 
 class AestheticEvaluator;
+class CritiqueEvaluator;
 
 class ImageBrowserBackend : public QObject
 {
@@ -23,6 +24,13 @@ class ImageBrowserBackend : public QObject
     Q_PROPERTY(bool aestheticEvaluating READ aestheticEvaluating NOTIFY aestheticEvaluatingChanged)
     Q_PROPERTY(bool aestheticAvailable READ aestheticAvailable NOTIFY aestheticAvailableChanged)
     Q_PROPERTY(QString aestheticStatusHint READ aestheticStatusHint NOTIFY aestheticStatusHintChanged)
+    Q_PROPERTY(QString critiqueText READ critiqueText NOTIFY critiqueTextChanged)
+    Q_PROPERTY(bool critiqueValid READ critiqueValid NOTIFY critiqueTextChanged)
+    Q_PROPERTY(double critiqueQualityScore READ critiqueQualityScore NOTIFY critiqueTextChanged)
+    Q_PROPERTY(bool critiqueQualityScoreValid READ critiqueQualityScoreValid NOTIFY critiqueTextChanged)
+    Q_PROPERTY(bool critiqueEvaluating READ critiqueEvaluating NOTIFY critiqueEvaluatingChanged)
+    Q_PROPERTY(QString critiqueStatusHint READ critiqueStatusHint NOTIFY critiqueStatusHintChanged)
+    Q_PROPERTY(bool critiquePanelOpen READ critiquePanelOpen WRITE setCritiquePanelOpen NOTIFY critiquePanelOpenChanged)
 
 public:
     explicit ImageBrowserBackend(QObject *parent = nullptr,
@@ -43,6 +51,14 @@ public:
     bool aestheticEvaluating() const { return m_aestheticEvaluating; }
     bool aestheticAvailable() const { return m_aestheticAvailable; }
     QString aestheticStatusHint() const { return m_aestheticStatusHint; }
+    QString critiqueText() const { return m_critiqueText; }
+    bool critiqueValid() const { return m_critiqueValid; }
+    double critiqueQualityScore() const { return m_critiqueQualityScore; }
+    bool critiqueQualityScoreValid() const { return m_critiqueQualityScoreValid; }
+    bool critiqueEvaluating() const { return m_critiqueEvaluating; }
+    QString critiqueStatusHint() const { return m_critiqueStatusHint; }
+    bool critiquePanelOpen() const { return m_critiquePanelOpen; }
+    void setCritiquePanelOpen(bool open);
 
     QStringList recentFolders() const { return m_recentFolders; }
     Q_INVOKABLE void loadFolder(const QString &folderPath);
@@ -51,6 +67,10 @@ public:
     void setExportDestRoot(const QString &root);
     void setFolderPicker(const std::function<QString()> &picker);
     void setAestheticMockScorer(const std::function<double(const QString &)> &scorer);
+    void setCritiqueMockGenerator(const std::function<QString(const QString &)> &generator);
+
+    Q_INVOKABLE void requestCritique();
+    Q_INVOKABLE void openCritiquePanel();
 
 public slots:
     void selectFolder();
@@ -65,6 +85,9 @@ private slots:
     void onAestheticScoreFailed(const QString &imagePath, const QString &reason);
     void onAestheticAvailabilityChanged(bool available);
     void onAestheticBusyChanged(bool busy);
+    void onCritiqueReady(const QString &imagePath, const QString &text, double qsitScore);
+    void onCritiqueFailed(const QString &imagePath, const QString &reason);
+    void onCritiqueBusyChanged(bool busy);
 
 signals:
     void imagePathsChanged();
@@ -79,6 +102,10 @@ signals:
     void aestheticEvaluatingChanged();
     void aestheticAvailableChanged();
     void aestheticStatusHintChanged();
+    void critiqueTextChanged();
+    void critiqueEvaluatingChanged();
+    void critiqueStatusHintChanged();
+    void critiquePanelOpenChanged();
 
 private:
     QStringList m_imagePaths;
@@ -106,13 +133,23 @@ private:
     void requestAestheticScore();
     void resetAestheticState();
     void setAestheticEvaluating(bool evaluating);
+    void syncCritiqueForCurrentImage();
+    void setCritiqueEvaluating(bool evaluating);
 
     AestheticEvaluator *m_aestheticEvaluator = nullptr;
+    CritiqueEvaluator *m_critiqueEvaluator = nullptr;
     double m_aestheticScore = 0.0;
     bool m_aestheticScoreValid = false;
     bool m_aestheticEvaluating = false;
     bool m_aestheticAvailable = false;
     QString m_aestheticStatusHint;
+    QString m_critiqueText;
+    bool m_critiqueValid = false;
+    double m_critiqueQualityScore = 0.0;
+    bool m_critiqueQualityScoreValid = false;
+    bool m_critiqueEvaluating = false;
+    QString m_critiqueStatusHint;
+    bool m_critiquePanelOpen = false;
 };
 
 #endif // IMAGEBROWSERBACKEND_H

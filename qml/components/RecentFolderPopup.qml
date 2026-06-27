@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.15
 import QtGraphicalEffects 1.15
 
 Popup {
-    id: recentFolderMenu
+    id: folderPopup
     required property var controller
 
     readonly property var recentList: controller ? controller.recentFolders : []
@@ -14,8 +14,20 @@ Popup {
     height: contentColumn.height + 40
     modal: true
     focus: true
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     signal selectFolder()
+
+    function pickFolder(path) {
+        if (controller)
+            controller.loadFolder(path)
+        close()
+    }
+
+    function browseFolder() {
+        close()
+        selectFolder()
+    }
 
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 250; easing.type: Easing.OutCubic }
@@ -47,6 +59,14 @@ Popup {
         anchors.centerIn: parent
         width: parent.width - 40
         spacing: 12
+
+        function pickFolder(path) {
+            folderPopup.pickFolder(path)
+        }
+
+        function browseFolder() {
+            folderPopup.browseFolder()
+        }
 
         Text {
             text: qsTr("最近打开")
@@ -91,11 +111,7 @@ Popup {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (recentFolderMenu.controller)
-                            recentFolderMenu.controller.loadFolder(modelData)
-                        recentFolderMenu.close()
-                    }
+                    onClicked: contentColumn.pickFolder(modelData)
                 }
             }
         }
@@ -142,10 +158,7 @@ Popup {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    recentFolderMenu.close()
-                    selectFolder()
-                }
+                onClicked: contentColumn.browseFolder()
             }
         }
     }

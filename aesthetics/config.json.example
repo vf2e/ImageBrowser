@@ -1,3 +1,5 @@
 {
-  "device": "cpu"
+  "device": "cuda",
+  "qsit_model": "zhangzicheng/q-sit-mini",
+  "qsit_device": "cuda"
 }

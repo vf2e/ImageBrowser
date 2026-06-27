@@ -84,7 +84,9 @@ echo [STEP 4/5] 复制美学评分模块...
 if exist "%PROJECT_ROOT%\aesthetics\eat_server.py" (
     if not exist "%DIST_DIR%\aesthetics" mkdir "%DIST_DIR%\aesthetics"
     copy /y "%PROJECT_ROOT%\aesthetics\eat_server.py" "%DIST_DIR%\aesthetics\" >nul
+    copy /y "%PROJECT_ROOT%\aesthetics\qsit_server.py" "%DIST_DIR%\aesthetics\" >nul
     copy /y "%PROJECT_ROOT%\aesthetics\requirements.txt" "%DIST_DIR%\aesthetics\" >nul
+    copy /y "%PROJECT_ROOT%\aesthetics\requirements-qsit.txt" "%DIST_DIR%\aesthetics\" >nul
     if exist "%PROJECT_ROOT%\aesthetics\config.json.example" (
         copy /y "%PROJECT_ROOT%\aesthetics\config.json.example" "%DIST_DIR%\aesthetics\" >nul
     )

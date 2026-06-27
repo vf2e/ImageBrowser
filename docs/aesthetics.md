@@ -59,14 +59,34 @@ build-release\ImageBrowser.exe
 | `美学 7.86` | 评分成功（1–10） |
 | `美学 未就绪` | 鼠标悬停可看原因（如未安装、缺权重） |
 
+点击左下角 **AI 点评** 可打开侧栏，由 Q-SiT-mini 本地生成摄影点评（首次需下载模型，约 1 GB）。
+
+---
+
+## AI 摄影点评（Q-SiT-mini）
+
+- 按需加载，不影响浏览速度
+- 首次点击会下载 HuggingFace 权重到 `aesthetics/hf_cache/`
+- 4060 8GB 显卡上首次加载约 20–30 秒，之后每张约 3–5 秒
+
+可选配置（`aesthetics/config.json`）：
+
+| 字段 | 说明 |
+|------|------|
+| `device` | EAT 评分设备，`cuda` / `cpu` |
+| `qsit_model` | 默认 `zhangzicheng/q-sit-mini` |
+| `qsit_device` | 点评模型设备，`cuda` / `cpu` |
+
 ---
 
 ## 目录结构
 
 ```
 aesthetics/
-├── eat_server.py          # 评分服务（应用自动调用）
-├── requirements.txt       # Python 依赖
+├── eat_server.py          # EAT 评分服务
+├── qsit_server.py         # Q-SiT 点评服务
+├── requirements.txt       # EAT Python 依赖
+├── requirements-qsit.txt    # Q-SiT 依赖
 ├── config.json.example    # 可选配置（复制为 config.json）
 ├── setup 后生成:
 │   ├── eat-repo/          # EAT 源码（git clone）

@@ -1,5 +1,6 @@
 #include "ImageBrowserBackend.h"
 #include "AestheticEvaluator.h"
+#include "CritiqueEvaluator.h"
 
 #include <QFileInfo>
 #include <QFileDialog>
@@ -45,6 +46,14 @@ ImageBrowserBackend::ImageBrowserBackend(QObject *parent,
     m_aestheticAvailable = m_aestheticEvaluator->isAvailable();
     m_aestheticStatusHint = m_aestheticEvaluator->statusHint();
 
+    m_critiqueEvaluator = new CritiqueEvaluator(this);
+    connect(m_critiqueEvaluator, &CritiqueEvaluator::critiqueReady,
+            this, &ImageBrowserBackend::onCritiqueReady);
+    connect(m_critiqueEvaluator, &CritiqueEvaluator::critiqueFailed,
+            this, &ImageBrowserBackend::onCritiqueFailed);
+    connect(m_critiqueEvaluator, &CritiqueEvaluator::busyChanged,
+            this, &ImageBrowserBackend::onCritiqueBusyChanged);
+
     loadRecentFoldersFromSettings();
 }
 
@@ -75,6 +84,12 @@ void ImageBrowserBackend::setAestheticMockScorer(const std::function<double(cons
     if (m_aestheticEvaluator)
         m_aestheticEvaluator->setMockScorer(scorer);
     onAestheticAvailabilityChanged(m_aestheticEvaluator && m_aestheticEvaluator->isAvailable());
+}
+
+void ImageBrowserBackend::setCritiqueMockGenerator(const std::function<QString(const QString &)> &generator)
+{
+    if (m_critiqueEvaluator)
+        m_critiqueEvaluator->setMockGenerator(generator);
 }
 
 void ImageBrowserBackend::selectFolder()
@@ -172,6 +187,7 @@ void ImageBrowserBackend::updateCurrentImagePath()
     emit isCurrentFavoriteChanged();
     emit currentIndexChanged();
     requestAestheticScore();
+    syncCritiqueForCurrentImage();
 }
 
 void ImageBrowserBackend::resetAestheticState()
@@ -259,6 +275,127 @@ void ImageBrowserBackend::onAestheticBusyChanged(bool busy)
     if (currentImagePath().isEmpty())
         return;
     setAestheticEvaluating(busy);
+}
+
+void ImageBrowserBackend::syncCritiqueForCurrentImage()
+{
+    const QString path = currentImagePath();
+    if (path.isEmpty() || !m_critiqueEvaluator) {
+        m_critiqueText.clear();
+        m_critiqueValid = false;
+        m_critiqueQualityScoreValid = false;
+        setCritiqueEvaluating(false);
+        emit critiqueTextChanged();
+        return;
+    }
+
+    if (m_critiquePanelOpen) {
+        requestCritique();
+        return;
+    }
+
+    if (m_critiqueEvaluator->hasCachedCritique(path)) {
+        m_critiqueText = m_critiqueEvaluator->cachedCritique(path);
+        m_critiqueValid = true;
+        const double qsitScore = m_critiqueEvaluator->cachedCritiqueScore(path);
+        m_critiqueQualityScoreValid = qsitScore >= 0.0;
+        m_critiqueQualityScore = m_critiqueQualityScoreValid ? qsitScore : 0.0;
+        setCritiqueEvaluating(false);
+        emit critiqueTextChanged();
+        return;
+    }
+
+    m_critiqueText.clear();
+    m_critiqueValid = false;
+    m_critiqueQualityScoreValid = false;
+    setCritiqueEvaluating(false);
+    emit critiqueTextChanged();
+}
+
+void ImageBrowserBackend::setCritiqueEvaluating(bool evaluating)
+{
+    if (m_critiqueEvaluating == evaluating)
+        return;
+    m_critiqueEvaluating = evaluating;
+    emit critiqueEvaluatingChanged();
+}
+
+void ImageBrowserBackend::requestCritique()
+{
+    const QString path = currentImagePath();
+    if (path.isEmpty() || !m_critiqueEvaluator)
+        return;
+
+    if (m_critiqueEvaluator->hasCachedCritique(path)) {
+        m_critiqueText = m_critiqueEvaluator->cachedCritique(path);
+        m_critiqueValid = true;
+        const double qsitScore = m_critiqueEvaluator->cachedCritiqueScore(path);
+        m_critiqueQualityScoreValid = qsitScore >= 0.0;
+        m_critiqueQualityScore = m_critiqueQualityScoreValid ? qsitScore : 0.0;
+        setCritiqueEvaluating(false);
+        emit critiqueTextChanged();
+        return;
+    }
+
+    m_critiqueText.clear();
+    m_critiqueValid = false;
+    m_critiqueQualityScoreValid = false;
+    emit critiqueTextChanged();
+    setCritiqueEvaluating(true);
+    m_critiqueEvaluator->requestCritique(path);
+}
+
+void ImageBrowserBackend::onCritiqueReady(const QString &imagePath, const QString &text, double qsitScore)
+{
+    if (!sameImagePath(imagePath, currentImagePath()))
+        return;
+
+    m_critiqueText = text;
+    m_critiqueValid = true;
+    m_critiqueQualityScoreValid = qsitScore >= 0.0;
+    m_critiqueQualityScore = m_critiqueQualityScoreValid ? qsitScore : 0.0;
+    m_critiqueStatusHint.clear();
+    setCritiqueEvaluating(false);
+    emit critiqueTextChanged();
+    emit critiqueStatusHintChanged();
+}
+
+void ImageBrowserBackend::onCritiqueFailed(const QString &imagePath, const QString &reason)
+{
+    if (!sameImagePath(imagePath, currentImagePath()))
+        return;
+
+    if (!reason.isEmpty() && m_critiqueStatusHint != reason) {
+        m_critiqueStatusHint = reason;
+        emit critiqueStatusHintChanged();
+    }
+
+    m_critiqueValid = false;
+    m_critiqueQualityScoreValid = false;
+    setCritiqueEvaluating(false);
+    emit critiqueTextChanged();
+}
+
+void ImageBrowserBackend::onCritiqueBusyChanged(bool busy)
+{
+    if (currentImagePath().isEmpty())
+        return;
+    setCritiqueEvaluating(busy);
+}
+
+void ImageBrowserBackend::setCritiquePanelOpen(bool open)
+{
+    if (m_critiquePanelOpen == open)
+        return;
+    m_critiquePanelOpen = open;
+    emit critiquePanelOpenChanged();
+    if (open)
+        requestCritique();
+}
+
+void ImageBrowserBackend::openCritiquePanel()
+{
+    setCritiquePanelOpen(true);
 }
 
 void ImageBrowserBackend::setCurrentIndex(int index)

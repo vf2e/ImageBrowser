@@ -90,6 +90,7 @@ private slots:
 
     // --- 美学评分 ---
     void aesthetic_mockScorer_returnsScoreForCurrentImage();
+    void critique_mockGenerator_returnsTextForCurrentImage();
 };
 
 void TestImageBrowserBackend::initTestCase()
@@ -831,6 +832,26 @@ void TestImageBrowserBackend::aesthetic_mockScorer_returnsScoreForCurrentImage()
     QCOMPARE(backend->aestheticScoreValid(), true);
     QCOMPARE(backend->aestheticScore(), 8.25);
     QCOMPARE(backend->aestheticEvaluating(), false);
+}
+
+void TestImageBrowserBackend::critique_mockGenerator_returnsTextForCurrentImage()
+{
+    TestFixture fixture;
+    const QString folder = fixture.createFolder(QStringLiteral("critique"));
+    fixture.createImageFile(folder, QStringLiteral("photo.jpg"), QByteArray("img"));
+
+    ImageBrowserBackend *backend = fixture.backend();
+    backend->setCritiqueMockGenerator([](const QString &path) -> QString {
+        return path.contains(QStringLiteral("photo.jpg"))
+                   ? QStringLiteral("构图均衡，光影层次较好。")
+                   : QString();
+    });
+
+    backend->loadFolder(folder);
+    backend->setCritiquePanelOpen(true);
+    QCOMPARE(backend->critiqueValid(), true);
+    QCOMPARE(backend->critiqueText(), QStringLiteral("构图均衡，光影层次较好。"));
+    QCOMPARE(backend->critiqueEvaluating(), false);
 }
 
 QTEST_MAIN(TestImageBrowserBackend)

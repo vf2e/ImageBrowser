@@ -91,7 +91,7 @@ if not exist "%EAT_REPO%\AVA\models" (
 echo [OK] EAT 代码: %EAT_REPO%\AVA
 
 echo.
-echo [STEP 2/3] 创建 Python 虚拟环境并安装依赖...
+echo [STEP 2/4] 创建 Python 虚拟环境并安装依赖...
 if exist "%VENV%\Scripts\python.exe" (
     echo [INFO] venv 已存在，跳过创建
 ) else (
@@ -121,41 +121,88 @@ if errorlevel 1 (
     exit /b 1
 )
 
+set "USE_CUDA=0"
+where nvidia-smi >nul 2>&1
+if not errorlevel 1 set "USE_CUDA=1"
+
+if "%USE_CUDA%"=="1" (
+    echo [INFO] 检测到 NVIDIA GPU，安装 CUDA 版 PyTorch...
+    "%VENV%\Scripts\pip.exe" install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+) else (
+    echo [INFO] 未检测到 NVIDIA GPU，安装 CPU 版 PyTorch...
+    "%VENV%\Scripts\pip.exe" install torch torchvision
+)
+if errorlevel 1 (
+    echo [ERROR] PyTorch 安装失败
+    exit /b 1
+)
+
 "%VENV%\Scripts\pip.exe" install -r "%AEST_DIR%\requirements.txt"
 if errorlevel 1 (
-    echo [ERROR] pip install 失败
-    echo 可尝试手动: "%VENV%\Scripts\pip.exe" install -r "%AEST_DIR%\requirements.txt"
+    echo [ERROR] EAT 依赖安装失败
+    exit /b 1
+)
+
+echo [INFO] 安装 Q-SiT 点评模型依赖...
+"%VENV%\Scripts\pip.exe" install -r "%AEST_DIR%\requirements-qsit.txt"
+if errorlevel 1 (
+    echo [ERROR] Q-SiT 依赖安装失败
     exit /b 1
 )
 echo [OK] Python 环境: %VENV%
 
 echo.
-echo [STEP 3/3] 检查模型权重...
+echo [STEP 3/4] 检查模型权重...
 set "HAS_WEIGHT=0"
-if exist "%WEIGHTS%\finetune.pth" set "HAS_WEIGHT=1"
+set "FINETUNE_FILE="
+
+if exist "%WEIGHTS%\finetune.pth" (
+    set "HAS_WEIGHT=1"
+    set "FINETUNE_FILE=finetune.pth"
+) else (
+    for %%F in ("%WEIGHTS%\*.pth") do (
+        set "NAME=%%~nxF"
+        if /i not "!NAME!"=="pretrain.pth" (
+            if "!HAS_WEIGHT!"=="0" (
+                set "HAS_WEIGHT=1"
+                set "FINETUNE_FILE=!NAME!"
+            )
+        )
+    )
+)
+
 if exist "%WEIGHTS%\pretrain.pth" echo [OK] 预训练权重 pretrain.pth 已就绪
 
-if "%HAS_WEIGHT%"=="0" (
+if "%HAS_WEIGHT%"=="1" (
+    echo [OK] 微调权重已就绪: !FINETUNE_FILE!
+) else (
     echo.
-    echo [WARN] 尚未放置微调权重 finetune.pth
+    echo [WARN] 尚未放置 AVA 微调权重
     echo.
-    echo 请从 EAT 官方仓库下载权重后，放入：
+    echo 请从 EAT 官方仓库下载 checkpoint 后，放入：
     echo   %WEIGHTS%\
     echo.
-    echo 文件命名:
-    echo   finetune.pth  - 必填，AVA 微调 checkpoint
-    echo   pretrain.pth  - 可选，dat_base_in1k_224.pth
+    echo 支持任意 .pth 文件名（除 pretrain.pth 外），例如：
+    echo   finetune.pth
+    echo   AVA_AOT_vacc_0.8259_srcc_0.7596_vlcc_0.7710.pth
+    echo.
+    echo pretrain.pth 为可选预训练权重
     echo.
     echo 下载地址见：
     echo   https://github.com/woshidandan/Image-Aesthetics-and-Quality-Assessment
     echo.
     start "" "%WEIGHTS%"
-) else (
-    echo [OK] 微调权重 finetune.pth 已就绪
 )
 
+echo.
+echo [STEP 4/4] 写入配置...
 if not exist "%AEST_DIR%\config.json" (
     copy /y "%AEST_DIR%\config.json.example" "%AEST_DIR%\config.json" >nul
+)
+if "%USE_CUDA%"=="1" (
+    echo [OK] 已启用 CUDA 加速（EAT 评分 + Q-SiT 点评）
+) else (
+    echo [INFO] 当前为 CPU 模式，可在 config.json 中调整 device
 )
 
 echo.
@@ -163,7 +210,7 @@ echo ========================================
 if "%HAS_WEIGHT%"=="1" (
     echo [OK] 安装完成，可直接运行 ImageBrowser
 ) else (
-    echo [OK] 代码与环境已就绪，放入 finetune.pth 后即可使用
+    echo [OK] 代码与环境已就绪，放入 AVA 微调 .pth 后即可使用
 )
 echo ========================================
 exit /b 0

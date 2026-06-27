@@ -71,6 +71,11 @@ ApplicationWindow {
         onSelectFolder: backend.selectFolder()
     }
 
+    CritiquePanel {
+        z: 500
+        controller: backend
+    }
+
     ToastMessage {
         id: toast
     }

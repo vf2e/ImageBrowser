@@ -92,6 +92,7 @@ Rectangle {
 
         Rectangle {
             id: aestheticBadge
+            z: 10
             anchors { top: parent.top; left: parent.left; margins: 24 }
             height: 36
             width: aestheticLabel.implicitWidth + 24
@@ -111,16 +112,11 @@ Rectangle {
                 NumberAnimation { duration: 200; easing.type: Easing.OutQuad }
             }
 
-            ToolTip.visible: badgeHover.containsMouse && aestheticStatusHint.length > 0 && !aestheticScoreValid
-            ToolTip.text: aestheticStatusHint
+            ToolTip.visible: badgeHover.containsMouse
+            ToolTip.text: aestheticScoreValid
+                ? "EAT 美学评分（专用模型，非 Q-SiT）"
+                : aestheticStatusHint
             ToolTip.delay: 300
-
-            MouseArea {
-                id: badgeHover
-                anchors.fill: parent
-                hoverEnabled: true
-                acceptedButtons: Qt.NoButton
-            }
 
             Text {
                 id: aestheticLabel
@@ -141,7 +137,73 @@ Rectangle {
         }
 
         Rectangle {
+            id: critiqueButton
+            z: 10
+            anchors { bottom: parent.bottom; left: parent.left; margins: 24 }
+            height: 36
+            width: critiqueRow.implicitWidth + 24
+            radius: 18
+            color: critiqueButtonHover.containsMouse ? "#DD4338CA" : "#CC312E81"
+            border.width: 1
+            border.color: critiqueButtonHover.containsMouse ? "#818CF8" : "#664F46E5"
+            visible: imageCount > 0
+
+            Behavior on color { ColorAnimation { duration: 180 } }
+            Behavior on border.color { ColorAnimation { duration: 180 } }
+
+            scale: critiqueButtonHover.pressed ? 0.96 : 1.0
+            Behavior on scale { NumberAnimation { duration: 120; easing.type: Easing.OutQuad } }
+
+            layer.enabled: true
+            layer.effect: DropShadow {
+                transparentBorder: true
+                radius: 12
+                samples: 17
+                verticalOffset: 3
+                color: critiqueButtonHover.containsMouse ? "#664F46E5" : "#004F46E5"
+                Behavior on color { ColorAnimation { duration: 200 } }
+            }
+
+            Row {
+                id: critiqueRow
+                anchors.centerIn: parent
+                spacing: 6
+
+                Text {
+                    text: "✦"
+                    color: "#C4B5FD"
+                    font { pixelSize: 12; weight: Font.Bold }
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Text {
+                    id: critiqueButtonLabel
+                    text: "AI 点评"
+                    color: "#F8FAFC"
+                    font {
+                        pixelSize: 13
+                        weight: Font.DemiBold
+                        family: "Microsoft YaHei UI"
+                    }
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            MouseArea {
+                id: critiqueButtonHover
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (controller)
+                        controller.openCritiquePanel()
+                }
+            }
+        }
+
+        Rectangle {
             id: favoriteBadge
+            z: 10
             anchors { top: parent.top; right: parent.right; margins: 24 }
             width: 56
             height: 56
@@ -180,6 +242,7 @@ Rectangle {
         }
 
         MouseArea {
+            z: 0
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onWheel: (wheel) => {

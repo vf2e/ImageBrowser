@@ -20,6 +20,22 @@ TestCase {
         compare(popup.controller.recentFolders[0], "C:/album-a")
     }
 
+    function test_pick_folder_closes_popup() {
+        var mock = createTemporaryObject(
+            Qt.createComponent(Qt.resolvedUrl("MockBackend.qml")),
+            root,
+            { recentFolders: ["C:/album-a"] })
+        var popup = createTemporaryObject(
+            Qt.createComponent(Qt.resolvedUrl("../../qml/components/RecentFolderPopup.qml")),
+            root,
+            { controller: mock, parent: root })
+        popup.open()
+        verify(popup.visible)
+        popup.pickFolder("C:/album-a")
+        compare(popup.visible, false)
+        compare(mock.currentImagePath, "C:/album-a")
+    }
+
     function test_empty_recent_list() {
         var mock = createTemporaryObject(
             Qt.createComponent(Qt.resolvedUrl("MockBackend.qml")),
