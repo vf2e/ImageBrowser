@@ -69,13 +69,25 @@ build-release\ImageBrowser.exe
 - 首次点击会下载 HuggingFace 权重到 `aesthetics/hf_cache/`
 - 4060 8GB 显卡上首次加载约 20–30 秒，之后每张约 3–5 秒
 
-可选配置（`aesthetics/config.json`）：
+可选配置（复制 `config.json.example` 为 `config.json`）：
 
-| 字段 | 说明 |
-|------|------|
-| `device` | EAT 评分设备，`cuda` / `cpu` |
-| `qsit_model` | 默认 `zhangzicheng/q-sit-mini` |
-| `qsit_device` | 点评模型设备，`cuda` / `cpu` |
+| 字段 | 适用 | 说明 |
+|------|------|------|
+| `device` | EAT | 美学评分设备，`cuda` / `cpu` |
+| `qsit_model` | Q-SiT | 默认 `zhangzicheng/q-sit-mini` |
+| `qsit_device` | Q-SiT | 点评模型设备，`cuda` / `cpu` |
+| `assistant_model` | 小助理 | 留空则仅 FAQ；如 `Qwen/Qwen2.5-0.5B-Instruct` |
+| `assistant_device` | 小助理 | LLM 设备，`cuda` / `cpu` |
+| `assistant_use_llm` | 小助理 | FAQ 未命中时是否调用 LLM，默认 `true` |
+| `assistant_max_tokens` | 小助理 | LLM 最大生成长度，默认 `256` |
+
+---
+
+## 小助理 AI
+
+- 入口：右下角 💬 按钮
+- 默认使用 `assistant_knowledge.md` 即时 FAQ，**无需配置模型**
+- 配置 `assistant_model` 后可启用本地语言模型作为补充
 
 ---
 
@@ -83,17 +95,20 @@ build-release\ImageBrowser.exe
 
 ```
 aesthetics/
-├── eat_server.py          # EAT 评分服务
-├── qsit_server.py         # Q-SiT 点评服务
-├── requirements.txt       # EAT Python 依赖
+├── eat_server.py            # EAT 评分服务
+├── qsit_server.py           # Q-SiT 点评服务
+├── assistant_server.py      # 小助理服务
+├── assistant_knowledge.md   # 小助理知识库
+├── requirements.txt         # EAT Python 依赖
 ├── requirements-qsit.txt    # Q-SiT 依赖
-├── config.json.example    # 可选配置（复制为 config.json）
+├── config.json.example      # 可选配置（复制为 config.json）
 ├── setup 后生成:
-│   ├── eat-repo/          # EAT 源码（git clone）
-│   ├── venv/              # Python 虚拟环境
+│   ├── eat-repo/            # EAT 源码（git clone）
+│   ├── venv/                # Python 虚拟环境
+│   ├── hf_cache/            # HuggingFace 模型缓存
 │   └── weights/
-│       ├── finetune.pth   # 你下载的微调权重
-│       └── pretrain.pth   # 可选
+│       ├── *.pth            # EAT 微调权重（自动识别）
+│       └── pretrain.pth     # 可选
 ```
 
 ---

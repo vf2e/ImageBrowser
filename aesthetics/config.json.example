@@ -1,5 +1,9 @@
 {
   "device": "cuda",
   "qsit_model": "zhangzicheng/q-sit-mini",
-  "qsit_device": "cuda"
+  "qsit_device": "cuda",
+  "assistant_model": "",
+  "assistant_device": "cuda",
+  "assistant_use_llm": true,
+  "assistant_max_tokens": 256
 }
